@@ -21,7 +21,7 @@
     <properties>
         <atlassian.plugin.key>com.atlassian.crucible.review-creator</atlassian.plugin.key>
         <atlassian.pdk.server.url>${atlassian.product.url}</atlassian.pdk.server.url>
-        <atlassian.product.version>2.0-410</atlassian.product.version>
+        <atlassian.product.version>2.0-SNAPSHOT</atlassian.product.version>
     </properties>
 
     <dependencies>

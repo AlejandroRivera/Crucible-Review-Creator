@@ -1,25 +1,25 @@
 package com.atlassian.crucible.reviewcreator;
 
-import com.atlassian.event.EventListener;
-import com.atlassian.event.Event;
-import com.atlassian.crucible.spi.PluginIdAware;
-import com.atlassian.crucible.spi.PluginId;
 import com.atlassian.crucible.spi.FisheyePluginUtilities;
+import com.atlassian.crucible.spi.PluginId;
+import com.atlassian.crucible.spi.PluginIdAware;
 import com.atlassian.crucible.spi.data.ChangesetData;
 import com.atlassian.crucible.spi.data.ReviewData;
 import com.atlassian.crucible.spi.data.UserData;
-import com.atlassian.crucible.spi.services.ReviewService;
 import com.atlassian.crucible.spi.services.ImpersonationService;
-import com.atlassian.crucible.spi.services.UserService;
 import com.atlassian.crucible.spi.services.Operation;
+import com.atlassian.crucible.spi.services.ReviewService;
+import com.atlassian.crucible.spi.services.UserService;
+import com.atlassian.event.Event;
+import com.atlassian.event.EventListener;
 import com.atlassian.fisheye.event.CommitEvent;
-import com.atlassian.fisheye.spi.services.RevisionDataService;
 import com.atlassian.fisheye.spi.data.ChangesetDataFE;
-
-import java.util.Collections;
-
+import com.atlassian.fisheye.spi.services.CommitterMappingService;
+import com.atlassian.fisheye.spi.services.RevisionDataService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.Collections;
 
 /**
  * Subscribes to FishEye commit events and automatically creates a review for
@@ -39,6 +39,7 @@ public class CommitEventListener implements EventListener, PluginIdAware {
     private final UserService userService;
     private final ReviewService reviewService;
     private final RevisionDataService revisionService;
+    private final CommitterMappingService mappingService;
     private final FisheyePluginUtilities fisheyePluginUtilities;
     private final ImpersonationService impersonationService;
     private PluginId pluginId;
@@ -53,11 +54,13 @@ public class CommitEventListener implements EventListener, PluginIdAware {
     @Autowired
     public CommitEventListener(ReviewService reviewService,
         RevisionDataService revisionService, UserService userService,
-        FisheyePluginUtilities fisheyePluginUtilities, ImpersonationService impersonationService) {
+        FisheyePluginUtilities fisheyePluginUtilities, ImpersonationService impersonationService,
+        CommitterMappingService mappingService) {
 
         this.userService = userService;
         this.reviewService = reviewService;
         this.revisionService = revisionService;
+        this.mappingService = mappingService;
         this.fisheyePluginUtilities = fisheyePluginUtilities;
         this.impersonationService = impersonationService;
 
@@ -72,36 +75,48 @@ public class CommitEventListener implements EventListener, PluginIdAware {
         final ChangesetDataFE fisheyeChangeSet = revisionService.getChangeset(ce.getRepositoryName(), ce.getChangeSetId());
         if (fisheyeChangeSet != null) {
 
-            final Operation<ReviewData, RuntimeException> task = new Operation<ReviewData, RuntimeException>() {
-                public ReviewData perform() throws RuntimeException {
-                    final ReviewData review = reviewService.createReviewFromChangeSets(prepareReview(fisheyeChangeSet), ce.getRepositoryName(),
-                        Collections.singletonList(new ChangesetData(ce.getChangeSetId())));
+            final ReviewData reviewTemplate = prepareReview(ce.getRepositoryName(), fisheyeChangeSet);
 
-                    // promote from Draft to Review:
-                    return reviewService.changeState(review.getPermaId(), "action:approveReview");
-                }
-            };
+            if (impersonationService.canImpersonate(pluginId, reviewTemplate.getCreator().getUserName())) {
+                ReviewData review = impersonationService.doAsUser(pluginId, reviewTemplate.getCreator().getUserName(), new Operation<ReviewData, RuntimeException>() {
+                    public ReviewData perform() throws RuntimeException {
+                        final ReviewData review = reviewService.createReviewFromChangeSets(reviewTemplate, ce.getRepositoryName(),
+                            Collections.singletonList(new ChangesetData(ce.getChangeSetId())));
 
-            final ReviewData review = impersonationService.canImpersonate(pluginId, defaultCreator) ?
-                impersonationService.doAsUser(pluginId, defaultCreator, task) :
-                impersonationService.doAsDefaultUser(pluginId, task);
+                        // promote from Draft to Review:
+                        return reviewService.changeState(review.getPermaId(), "action:approveReview");
+                    }
+                });
 
+                logger.info(String.format("Automatic review created: %s for commit %s:%s : %s",
+                    review.getPermaId().getId(), ce.getRepositoryName(), ce.getChangeSetId(),
+                    fisheyeChangeSet.getComment()));
 
-            logger.info(String.format("Automatic review created: %s for commit %s:%s : %s",
-                review.getPermaId().getId(), ce.getRepositoryName(), ce.getChangeSetId(),
-                fisheyeChangeSet.getComment()));
+            } else {
+                logger.error(String.format("Failed to automatically create a review for commit: %s:%s : " +
+                        "Crucible won't let me impersonate user %s as review creator.",
+                    ce.getRepositoryName(), ce.getChangeSetId(), reviewTemplate.getCreator().getUserName()));
+            }
 
         } else {
-            logger.warn(String.format("Failed to automatically create a review for commit: %s:%s",
+            logger.error(String.format("Failed to automatically create a review for commit: %s:%s",
                 ce.getRepositoryName(), ce.getChangeSetId()));
         }
     }
 
-    private ReviewData prepareReview(ChangesetDataFE fisheyeChangeSet) {
+    private ReviewData prepareReview(String repository, ChangesetDataFE fisheyeChangeSet) {
 
-        final UserData author = userService.getUser(defaultAuthor);
-        final UserData moderator = userService.getUser(defaultModerator);
-        final UserData creator = userService.getUser(defaultCreator);
+        UserData author, moderator, creator;
+
+        UserData committer = mappingService.getUserForCommitter(repository, fisheyeChangeSet.getAuthor());
+        if (committer == null) {
+            author = userService.getUser(defaultAuthor);
+            moderator = userService.getUser(defaultModerator);
+            creator = userService.getUser(defaultCreator);
+        } else {
+            logger.info("");
+            author = moderator = creator = committer;
+        }
 
         return new ReviewData(
             projectKey,

@@ -9,6 +9,11 @@
     <component-import key="userManager" interface="com.atlassian.sal.api.user.UserManager" />
     <component-import key="pluginSettingsFactory" interface="com.atlassian.sal.api.pluginsettings.PluginSettingsFactory" />
 
+    <component key="configurationManager" class="com.example.reviewcreator.ConfigurationManagerImpl" public="false">
+        <description>Manages plugin settings serialization and persistence.</description>
+        <interface>com.example.reviewcreator.ConfigurationManager</interface>
+    </component>
+
     <web-item key="reviewcreatorwebitem" section="system.admin/system">
         <link>/plugins/servlet/reviewcreatoradmin</link>
         <label key="Auto Review Creation"/>

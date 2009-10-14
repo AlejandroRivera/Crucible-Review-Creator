@@ -48,7 +48,7 @@ public class CommitListener implements EventListener {
     private final ImpersonationService impersonator;
     private final ConfigurationManager config;
 
-    public CommitListener(PluginSettingsFactory settingsFactory,
+    public CommitListener(ConfigurationManager config,
             ReviewService reviews,
             ProjectService projectService,
             RevisionDataService revisionService,
@@ -60,7 +60,7 @@ public class CommitListener implements EventListener {
         this.projectService = projectService;
         this.userService = userService;
         this.impersonator = impersonator;
-        config = new ConfigurationManager(settingsFactory.createGlobalSettings());
+        this.config = config;
     }
 
     public void handleEvent(Event event) {

@@ -27,7 +27,7 @@ public class AdminServlet extends HttpServlet {
     private final ConfigurationManager config;
 
     public AdminServlet(
-            PluginSettingsFactory settingsFactory,
+            ConfigurationManager config,
             ProjectService projectService,
             ImpersonationService impersonator,
             VelocityHelper velocity) {
@@ -35,7 +35,7 @@ public class AdminServlet extends HttpServlet {
         this.projectService = projectService;
         this.impersonator = impersonator;
         this.velocity = velocity;
-        config = new ConfigurationManager(settingsFactory.createGlobalSettings());
+        this.config = config;
     }
 
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {

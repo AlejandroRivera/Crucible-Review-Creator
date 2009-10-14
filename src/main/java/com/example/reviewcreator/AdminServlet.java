@@ -2,7 +2,6 @@ package com.example.reviewcreator;
 
 import com.atlassian.fisheye.plugin.web.helpers.VelocityHelper;
 import com.atlassian.sal.api.pluginsettings.PluginSettingsFactory;
-import com.atlassian.sal.api.pluginsettings.PluginSettings;
 import com.atlassian.crucible.spi.services.ImpersonationService;
 import com.atlassian.crucible.spi.services.Operation;
 import com.atlassian.crucible.spi.services.ProjectService;
@@ -22,32 +21,34 @@ import org.apache.commons.lang.StringUtils;
  */
 public class AdminServlet extends HttpServlet {
 
-    private final String RUNAS_CFG = "com.example.reviewcreator.runAs";
-    private final String PROJECTS_CFG = "com.example.reviewcreator.projects";
-    private final PluginSettingsFactory settingsFactory;
     private final ProjectService projectService;
     private final ImpersonationService impersonator;
     private final VelocityHelper velocity;
+    private final ConfigurationManager config;
 
-    public AdminServlet(PluginSettingsFactory settingsFactory, ProjectService projectService, ImpersonationService impersonator,  VelocityHelper velocity) {
-        this.settingsFactory = settingsFactory;
+    public AdminServlet(
+            PluginSettingsFactory settingsFactory,
+            ProjectService projectService,
+            ImpersonationService impersonator,
+            VelocityHelper velocity) {
+        
         this.projectService = projectService;
         this.impersonator = impersonator;
         this.velocity = velocity;
+        config = new ConfigurationManager(settingsFactory.createGlobalSettings());
     }
 
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-        final PluginSettings settings = settingsFactory.createGlobalSettings();
         final Map<String, Object> params = new HashMap<String, Object>();
 
-        final String username = (String) settings.get(RUNAS_CFG);
+        final String username = config.loadRunAsUser();
         if (!StringUtils.isEmpty(username)) {
             params.put("username", username);
 
             impersonator.doAsUser(null, username, new Operation<Void, RuntimeException>() {
                 public Void perform() throws RuntimeException {
-                    params.put("projects", loadProjects(settings));
+                    params.put("projects", loadProjects());
                     return null;
                 }
             });
@@ -59,20 +60,19 @@ public class AdminServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        final PluginSettings settings = settingsFactory.createGlobalSettings();
         final String username = req.getParameter("username");
 
-        settings.put(RUNAS_CFG, username);
+        config.storeRunAsUser(username);
         final List<String> enabled = req.getParameterValues("enabled") == null ?
                 Collections.<String>emptyList() : Arrays.asList(req.getParameterValues("enabled"));
 
         impersonator.doAsUser(null, username, new Operation<Void, RuntimeException>() {
             public Void perform() throws RuntimeException {
                 final Set<Project> projects = new HashSet<Project>();
-                for (Project p : loadProjects(settings)) {
+                for (Project p : loadProjects()) {
                     projects.add(new Project(p.getKey(), p.getName(), enabled.contains(p.getKey())));
                 }
-                storeProjects(settings, projects);
+                storeProjects(projects);
                 return null;
             }
         });
@@ -85,11 +85,9 @@ public class AdminServlet extends HttpServlet {
      *
      * @return
      */
-    private Set<Project> loadProjects(PluginSettings settings) {
+    private Set<Project> loadProjects() {
 
-        final List<String> enabledKeys = settings.get(PROJECTS_CFG) == null ?
-                Collections.<String>emptyList() :
-                Arrays.asList(StringUtils.split(settings.get(PROJECTS_CFG).toString(), ';'));
+        final List<String> enabledKeys = config.loadEnabledProjects();
 
         final Set<Project> projects = new TreeSet<Project>(new Comparator<Project>() {
             public int compare(Project p1, Project p2) {
@@ -107,7 +105,7 @@ public class AdminServlet extends HttpServlet {
      *
      * @param projects
      */
-    private void storeProjects(PluginSettings settings, Set<Project> projects) {
+    private void storeProjects(Set<Project> projects) {
 
         final List<String> enabled = new ArrayList<String>();
         for (Project p : projects) {
@@ -115,7 +113,7 @@ public class AdminServlet extends HttpServlet {
                 enabled.add(p.getKey());
             }
         }
-        settings.put(PROJECTS_CFG, StringUtils.join(enabled.iterator(), ';'));
+        config.storeEnabledProjects(enabled);
     }
 
 }

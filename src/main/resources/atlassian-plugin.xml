@@ -1,0 +1,21 @@
+<atlassian-plugin key="${project.groupId}.${project.artifactId}" name="${project.artifactId}" plugins-version="2">
+    <plugin-info>
+        <description>${project.description}</description>
+        <version>${project.version}</version>
+        <vendor name="${project.organization.name}" url="${project.organization.url}" />
+    </plugin-info>
+
+    <listener key="commit-listener" class="com.example.reviewcreator.CommitListener"/>
+    <component-import key="userManager" interface="com.atlassian.sal.api.user.UserManager" />
+    <component-import key="pluginSettingsFactory" interface="com.atlassian.sal.api.pluginsettings.PluginSettingsFactory" />
+
+    <web-item key="reviewcreatorwebitem" section="system.admin/system">
+        <link>/plugins/servlet/reviewcreatoradmin</link>
+        <label key="Auto Review Creation"/>
+    </web-item>
+
+    <servlet name="${project.artifactId}" class="com.example.reviewcreator.AdminServlet" key="reviewcreator" adminLevel="system">
+        <description>Configuration for Automatic Review Creation</description>
+        <url-pattern>/reviewcreatoradmin</url-pattern>
+    </servlet>
+</atlassian-plugin>

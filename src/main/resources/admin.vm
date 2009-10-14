@@ -1,0 +1,60 @@
+<html>
+<head>
+    <title>Automatic Review Creation for New Commits</title>
+    <meta name='decorator' content='atl.admin'/>
+</head>
+<body>
+<form method="post">
+    <table class="adminTable">
+        <tbody>
+            <tr>
+                <td>
+                    <p>
+                    This plugin subscribes to commit events and creates a review for
+                    each commit.
+                    </p>
+                    <p>
+                    Auto review creation can be enabled/disabled on a
+                    per-project basis. Enabled projects must be bound to a FishEye repository
+                    and must have a default Moderator configured in the admin section.
+                    </p>
+                    <p>
+                        Run plugin as user (not used as review moderator):
+                        <input type="text" size="15" name="username" value="#if ($username)$username#end"/>
+                    </p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    #if ($username)
+    <table class="adminTable sortable">
+        <thead>
+        <th>Enabled</th>
+        <th>Project</th>
+        <th>Project Name</th>
+        </thead>
+        <tbody>
+        #foreach ($project in $projects)
+        <tr>
+            <td>
+                <input type="checkbox" name="enabled" value="$project.Key"#if ($project.Enabled) checked="true"#end/>
+            </td>
+            <td>
+                $project.Key
+            </td>
+            <td>
+                $project.Name
+            </td>
+        </tr>
+        #end
+        </tbody>
+    </table>
+    #else
+    <p style="color: DarkRed">Specify a valid (admin) user for this plugin to run as.</p>
+    #end
+    <p>
+        <input type="submit" value="save"/>
+    </p>
+</form>
+</body>
+</html>

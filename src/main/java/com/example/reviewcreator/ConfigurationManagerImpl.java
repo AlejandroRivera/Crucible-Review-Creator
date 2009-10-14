@@ -30,9 +30,10 @@ public class ConfigurationManagerImpl implements ConfigurationManager {
 
     public List<String> loadEnabledProjects() {
 
-        return store.get(PROJECTS_CFG) == null ?
+        final Object value = store.get(PROJECTS_CFG);
+        return value == null ?
                 Collections.<String>emptyList() :
-                Arrays.asList(StringUtils.split(store.get(PROJECTS_CFG).toString(), ';'));
+                Arrays.asList(StringUtils.split(value.toString(), ';'));
     }
 
     public void storeEnabledProjects(List<String> projectKeys) {

@@ -7,7 +7,6 @@ import com.atlassian.crucible.spi.data.*;
 import com.atlassian.fisheye.event.CommitEvent;
 import com.atlassian.fisheye.spi.services.RevisionDataService;
 import com.atlassian.fisheye.spi.data.ChangesetDataFE;
-import com.atlassian.sal.api.pluginsettings.PluginSettingsFactory;
 
 import java.util.*;
 
@@ -41,21 +40,22 @@ import org.apache.commons.lang.StringUtils;
 public class CommitListener implements EventListener {
 
     private final Logger logger = Logger.getLogger(getClass().getName());
-    private final ReviewService reviews;
-    private final RevisionDataService revisionService;
-    private final ProjectService projectService;
-    private final UserService userService;
-    private final ImpersonationService impersonator;
-    private final ConfigurationManager config;
+
+    private final RevisionDataService revisionService;  // provided by FishEye
+    private final ReviewService reviewService;          // provided by Crucible
+    private final ProjectService projectService;        // provided by Crucible
+    private final UserService userService;              // provided by Crucible
+    private final ImpersonationService impersonator;    // provided by Crucible
+    private final ConfigurationManager config;          // provided by our plugin
 
     public CommitListener(ConfigurationManager config,
-            ReviewService reviews,
+            ReviewService reviewService,
             ProjectService projectService,
             RevisionDataService revisionService,
             UserService userService,
             ImpersonationService impersonator) {
 
-        this.reviews = reviews;
+        this.reviewService = reviewService;
         this.revisionService = revisionService;
         this.projectService = projectService;
         this.userService = userService;
@@ -63,73 +63,89 @@ public class CommitListener implements EventListener {
         this.config = config;
     }
 
+    public Class[] getHandledEventClasses() {
+        return new Class[] {CommitEvent.class};
+    }
+
     public void handleEvent(Event event) {
 
-        final String runAs = config.loadRunAsUser();
-        if (StringUtils.isEmpty(runAs)) {
-            return;
-        }
-
         final CommitEvent commit = (CommitEvent) event;
-        try {
-            impersonator.doAsUser(null, runAs,
-                new Operation<Void, ServerException>() {
-                    public Void perform() throws ServerException {
 
-                        final ChangesetDataFE cs = revisionService.getChangeset(
-                                commit.getRepositoryName(), commit.getChangeSetId());
-                        final ProjectData project = getEnabledProjectForRepository(
-                                commit.getRepositoryName());
+        if (isPluginEnabled()) {
+            try {
+                // switch to admin user so we can access all projects:
+                impersonator.doAsUser(null, config.loadRunAsUser(),
+                    new Operation<Void, ServerException>() {
+                        public Void perform() throws ServerException {
 
-                        if (project != null) {
-                            final String moderator = project.getDefaultModerator();
-                            if (moderator != null) {
-                                final ReviewData template = buildReviewTemplate(cs, project);
+                            ChangesetDataFE cs = revisionService.getChangeset(
+                                    commit.getRepositoryName(), commit.getChangeSetId());
+                            ProjectData project = getEnabledProjectForRepository(
+                                    commit.getRepositoryName());
 
-                                impersonator.doAsUser(null, moderator, new Operation<Void, ServerException>() {
-                                    public Void perform() throws ServerException {
+                            if (project != null) {
+                                String moderator = project.getDefaultModerator();
+                                if (moderator != null) {
+                                    // create the review:
+                                    createReview(commit.getRepositoryName(), cs, project, moderator);
 
-                                        // create a new review:
-                                        final ReviewData review = reviews.createReviewFromChangeSets(
-                                                template,
-                                                commit.getRepositoryName(),
-                                                Collections.singletonList(new ChangesetData(cs.getCsid())));
-
-                                        // add the project's default reviewers:
-                                        final List<String> reviewers = project.getDefaultReviewerUsers();
-                                        if (reviewers != null && !reviewers.isEmpty()) {
-                                            reviews.addReviewers(review.getPermaId(),
-                                                    reviewers.toArray(new String[reviewers.size()]));
-                                        }
-
-                                        // start the review, so everyone is notified:
-                                        reviews.changeState(review.getPermaId(), "action:approveReview");
-
-                                        logger.info(String.format("Auto-created review %s for " +
-                                                "commit %s:%s with moderator %s.",
-                                                review.getPermaId(), commit.getRepositoryName(),
-                                                cs.getCsid(), review.getModerator().getUserName()));
-                                        return null;
-                                    }
-                                });
-
+                                } else {
+                                    logger.error(String.format("Unable to auto-create review for changeset %s. " +
+                                            "No default moderator configured for project %s.",
+                                            commit.getChangeSetId(), project.getKey()));
+                                }
                             } else {
                                 logger.error(String.format("Unable to auto-create review for changeset %s. " +
-                                        "No default moderator configured for project %s.",
-                                        commit.getChangeSetId(), project.getKey()));
+                                        "No projects found that bind to repository %s.",
+                                        commit.getChangeSetId(), commit.getRepositoryName()));
                             }
-                        } else {
-                            logger.error(String.format("Unable to auto-create review for changeset %s. " +
-                                    "No projects found that bind to repository %s.",
-                                    commit.getChangeSetId(), commit.getRepositoryName()));
+                            return null;
                         }
-                        return null;
-                    }
-                });
-        } catch (Exception e) {
-            logger.error(String.format("Unable to auto-create " +
-                    "review for changeset %s: %s.",
-                    commit.getChangeSetId(), e.getMessage(), e));
+                    });
+            } catch (Exception e) {
+                logger.error(String.format("Unable to auto-create " +
+                        "review for changeset %s: %s.",
+                        commit.getChangeSetId(), e.getMessage()), e);
+            }
+        }
+    }
+
+    private void createReview(final String repoKey, final ChangesetDataFE cs,
+                              final ProjectData project, String moderator)
+            throws ServerException {
+
+        final ReviewData template = buildReviewTemplate(cs, project);
+
+        // switch to user moderator:
+        impersonator.doAsUser(null, moderator, new Operation<Void, ServerException>() {
+            public Void perform() throws ServerException {
+
+                // create a new review:
+                final ReviewData review = reviewService.createReviewFromChangeSets(
+                        template,
+                        repoKey,
+                        Collections.singletonList(new ChangesetData(cs.getCsid())));
+
+                // add the project's default reviewers:
+                addReviewers(review, project);
+
+                // start the review, so everyone is notified:
+                reviewService.changeState(review.getPermaId(), "action:approveReview");
+
+                logger.info(String.format("Auto-created review %s for " +
+                        "commit %s:%s with moderator %s.",
+                        review.getPermaId(), repoKey,
+                        cs.getCsid(), review.getModerator().getUserName()));
+                return null;
+            }
+        });
+    }
+
+    private void addReviewers(ReviewData review, ProjectData project) {
+        final List<String> reviewers = project.getDefaultReviewerUsers();
+        if (reviewers != null && !reviewers.isEmpty()) {
+            reviewService.addReviewers(review.getPermaId(),
+                    reviewers.toArray(new String[reviewers.size()]));
         }
     }
 
@@ -175,34 +191,6 @@ public class CommitListener implements EventListener {
     }
 
     /**
-     * Returns a map containing all committer names that are mapped to Crucible
-     * user accounts.
-     * This is an expensive operation that will be redundant when the fecru SPI
-     * gets a <code>CommitterMapperService</code>.
-     * <p>
-     * This method must be invoked with admin permissions.
-     * </p>
-     *
-     * @param   repoKey
-     * @return
-     */
-    private Map<String, UserData> loadCommitterMappings(final String repoKey)
-            throws ServerException {
-
-        final Map<String, UserData> committerToUser = new HashMap<String, UserData>();
-        for (UserData ud : userService.getAllUsers()) {
-            final UserProfileData profile = userService.getUserProfile(ud.getUserName());
-            final List<String> committers = profile.getMappedCommitters().get(repoKey);
-            if (committers != null) {
-                for (String committer : committers) {
-                    committerToUser.put(committer, ud);
-                }
-            }
-        }
-        return committerToUser;
-    }
-
-    /**
      * <p>
      * Given a FishEye repository key, returns the Crucible project that has
      * this repository configured as its default.
@@ -235,7 +223,35 @@ public class CommitListener implements EventListener {
         return null;
     }
 
-    public Class[] getHandledEventClasses() {
-        return new Class[] {CommitEvent.class};
+    /**
+     * Returns a map containing all committer names that are mapped to Crucible
+     * user accounts.
+     * This is an expensive operation that will be redundant when the fecru SPI
+     * gets a <code>CommitterMapperService</code>.
+     * <p>
+     * This method must be invoked with admin permissions.
+     * </p>
+     *
+     * @param   repoKey
+     * @return
+     */
+    private Map<String, UserData> loadCommitterMappings(final String repoKey)
+            throws ServerException {
+
+        final Map<String, UserData> committerToUser = new HashMap<String, UserData>();
+        for (UserData ud : userService.getAllUsers()) {
+            final UserProfileData profile = userService.getUserProfile(ud.getUserName());
+            final List<String> committers = profile.getMappedCommitters().get(repoKey);
+            if (committers != null) {
+                for (String committer : committers) {
+                    committerToUser.put(committer, ud);
+                }
+            }
+        }
+        return committerToUser;
+    }
+    
+    private boolean isPluginEnabled() {
+        return !StringUtils.isEmpty(config.loadRunAsUser());
     }
 }

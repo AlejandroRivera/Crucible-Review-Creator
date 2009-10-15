@@ -143,9 +143,11 @@ public class CommitListener implements EventListener {
      * @return
      * @throws ServerException
      */
-    private ReviewData buildReviewTemplate(ChangesetDataFE cs, ProjectData project) throws ServerException {
+    private ReviewData buildReviewTemplate(ChangesetDataFE cs, ProjectData project)
+            throws ServerException {
 
-        final Map<String, UserData> committerToUser = loadCommitterMappings(project.getDefaultRepositoryName());
+        final Map<String, UserData> committerToUser =
+                loadCommitterMappings(project.getDefaultRepositoryName());
         final UserData creator = committerToUser.get(cs.getAuthor()) == null ?
                 userService.getUser(project.getDefaultModerator()) :
                 committerToUser.get(cs.getAuthor());
@@ -184,7 +186,8 @@ public class CommitListener implements EventListener {
      * @param   repoKey
      * @return
      */
-    private Map<String, UserData> loadCommitterMappings(final String repoKey) throws ServerException {
+    private Map<String, UserData> loadCommitterMappings(final String repoKey)
+            throws ServerException {
 
         final Map<String, UserData> committerToUser = new HashMap<String, UserData>();
         for (UserData ud : userService.getAllUsers()) {
@@ -224,7 +227,8 @@ public class CommitListener implements EventListener {
         final List<ProjectData> projects = projectService.getAllProjects();
         final List<String> enabled = config.loadEnabledProjects();
         for (ProjectData project : projects) {
-            if (repoKey.equals(project.getDefaultRepositoryName()) && enabled.contains(project.getKey())) {
+            if (repoKey.equals(project.getDefaultRepositoryName()) &&
+                    enabled.contains(project.getKey())) {
                 return project;
             }
         }

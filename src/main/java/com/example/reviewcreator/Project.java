@@ -1,8 +1,5 @@
 package com.example.reviewcreator;
 
-/**
- * @author  Erik van Zijst
- */
 public class Project {
 
     private final String key;

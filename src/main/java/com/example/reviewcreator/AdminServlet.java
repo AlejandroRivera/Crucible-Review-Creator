@@ -16,9 +16,6 @@ import java.util.*;
 
 import org.apache.commons.lang.StringUtils;
 
-/**
- * @author  Erik van Zijst
- */
 public class AdminServlet extends HttpServlet {
 
     private final ProjectService projectService;
@@ -38,7 +35,8 @@ public class AdminServlet extends HttpServlet {
         this.config = config;
     }
 
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
 
         final Map<String, Object> params = new HashMap<String, Object>();
 
@@ -59,7 +57,8 @@ public class AdminServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
         final String username = req.getParameter("username");
 
         config.storeRunAsUser(username);

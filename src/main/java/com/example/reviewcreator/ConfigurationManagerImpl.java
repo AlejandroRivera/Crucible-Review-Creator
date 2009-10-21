@@ -16,7 +16,11 @@ public class ConfigurationManagerImpl implements ConfigurationManager {
     private final PluginSettings store;
 
     public ConfigurationManagerImpl(PluginSettingsFactory settingsFactory) {
-        store = settingsFactory.createGlobalSettings();
+        this(settingsFactory.createGlobalSettings());
+    }
+
+    ConfigurationManagerImpl(PluginSettings store) {
+        this.store = store;
     }
 
     public String loadRunAsUser() {

@@ -8,13 +8,20 @@
     <version>1.0-SNAPSHOT</version>
 
     <organization>
-        <name>Example Company</name>
-        <url>http://www.example.com/</url>
+        <name>Atlassian</name>
+        <url>http://www.atlassian.com/</url>
     </organization>
 
     <name>reviewcreator</name>
     <description>This is the com.atlassian.plugins:reviewcreator plugin for Atlassian FishEye/Crucible.</description>
     <packaging>atlassian-plugin</packaging>
+
+    <scm>
+        <connection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/trunk</connection>
+        <developerConnection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/trunk</developerConnection>
+        <tag>HEAD</tag>
+        <url>http://svn.atlassian.com/fisheye/browse/public/atlassian/crucible/plugins/review-creator/trunk</url>
+    </scm>
 
     <dependencies>
         <dependency>

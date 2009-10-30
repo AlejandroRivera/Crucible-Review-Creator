@@ -19,7 +19,6 @@
     <scm>
         <connection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/trunk</connection>
         <developerConnection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/trunk</developerConnection>
-        <tag>HEAD</tag>
         <url>http://svn.atlassian.com/fisheye/browse/public/atlassian/crucible/plugins/review-creator/trunk</url>
     </scm>
 
@@ -48,6 +47,16 @@
                 <configuration>
                     <productVersion>${fecru.version}</productVersion>
                     <productDataVersion>${fecru.data.version}</productDataVersion>
+                    <instructions>
+                        <Import-Package>
+                            org.apache.log4j;version="1.2.9",
+                            com.atlassian.fisheye.*;version="${fecru.version}",
+                            com.atlassian.crucible.spi*;version="${fecru.version}",
+                            javax.servlet*;version="2.5",
+                            com.atlassian.event;version="0.5",
+                            org.apache.commons.lang;version="2.2"
+                        </Import-Package>
+                    </instructions>
                 </configuration>
             </plugin>
             <plugin>

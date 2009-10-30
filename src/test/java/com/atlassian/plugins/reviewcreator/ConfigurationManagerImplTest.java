@@ -1,4 +1,4 @@
-package com.example.reviewcreator;
+package com.atlassian.plugins.reviewcreator;
 
 import static org.junit.Assert.*;
 import org.junit.Test;

@@ -3,11 +3,12 @@
     <plugin-info>
         <description>${project.description}</description>
         <version>${project.version}</version>
+        <application-version min="2.1"/>
         <vendor name="${project.organization.name}" url="${project.organization.url}" />
     </plugin-info>
 
     <!-- our crucible event listener -->
-    <listener key="commit-listener" class="com.example.reviewcreator.CommitListener"/>
+    <listener key="commit-listener" class="com.atlassian.plugins.reviewcreator.CommitListener"/>
 
     <!-- persistence provided by SAL -->
     <component-import key="pluginSettingsFactory"
@@ -15,10 +16,10 @@
 
     <!-- our Spring bean to manage config settings -->
     <component key="configurationManager"
-               class="com.example.reviewcreator.ConfigurationManagerImpl"
+               class="com.atlassian.plugins.reviewcreator.ConfigurationManagerImpl"
                public="false">
         <description>Manages plugin settings serialization and persistence.</description>
-        <interface>com.example.reviewcreator.ConfigurationManager</interface>
+        <interface>com.atlassian.plugins.reviewcreator.ConfigurationManager</interface>
     </component>
 
     <!-- the new menu entry in the admin screen -->
@@ -29,7 +30,7 @@
 
     <!-- the plugin's admin page -->
     <servlet name="${project.artifactId}"
-             class="com.example.reviewcreator.AdminServlet"
+             class="com.atlassian.plugins.reviewcreator.AdminServlet"
              key="reviewcreator" adminLevel="system">
         <description>Configuration for Automatic Review Creation</description>
         <url-pattern>/reviewcreatoradmin</url-pattern>

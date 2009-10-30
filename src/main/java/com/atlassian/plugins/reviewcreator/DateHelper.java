@@ -1,4 +1,4 @@
-package com.example.reviewcreator;
+package com.atlassian.plugins.reviewcreator;
 
 import java.util.Date;
 import java.util.GregorianCalendar;

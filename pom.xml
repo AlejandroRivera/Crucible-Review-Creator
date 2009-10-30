@@ -69,6 +69,19 @@
         </plugins>
     </build>
 
+    <distributionManagement>
+        <repository>
+            <id>atlassian-m2-repository</id>
+            <name>Atlassian Public Repository</name>
+            <url>davs://maven.atlassian.com/public</url>
+        </repository>
+        <snapshotRepository>
+            <id>atlassian-m2-snapshot-repository</id>
+            <name>Atlassian Public Snapshot Repository</name>
+            <url>davs://maven.atlassian.com/public-snapshot</url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
         <fecru.version>2.1.0.M5-438</fecru.version>
         <fecru.data.version>2.1.0.M5-438</fecru.data.version>

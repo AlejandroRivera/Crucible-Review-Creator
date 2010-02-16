@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.atlassian.plugins</groupId>
     <artifactId>reviewcreator</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.1</version>
 
     <organization>
         <name>Atlassian</name>
@@ -15,9 +15,9 @@
     <packaging>atlassian-plugin</packaging>
 
     <scm>
-        <connection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/trunk</connection>
-        <developerConnection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/trunk</developerConnection>
-        <url>http://svn.atlassian.com/fisheye/browse/public/atlassian/crucible/plugins/review-creator/trunk</url>
+        <connection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/tags/reviewcreator-1.1</connection>
+        <developerConnection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/tags/reviewcreator-1.1</developerConnection>
+        <url>http://svn.atlassian.com/fisheye/browse/public/atlassian/crucible/plugins/review-creator/tags/reviewcreator-1.1</url>
     </scm>
 
     <dependencies>

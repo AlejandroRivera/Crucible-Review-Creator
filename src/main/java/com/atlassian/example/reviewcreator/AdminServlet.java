@@ -1,4 +1,4 @@
-package com.atlassian.plugins.reviewcreator;
+package com.atlassian.example.reviewcreator;
 
 import com.atlassian.fisheye.plugin.web.helpers.VelocityHelper;
 import com.atlassian.crucible.spi.services.ImpersonationService;

@@ -1,4 +1,4 @@
-package com.atlassian.plugins.reviewcreator;
+package com.atlassian.example.reviewcreator;
 
 import com.atlassian.event.EventListener;
 import com.atlassian.event.Event;

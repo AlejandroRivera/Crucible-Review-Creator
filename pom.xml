@@ -11,7 +11,7 @@
     </organization>
 
     <name>reviewcreator</name>
-    <description>This is the com.atlassian.plugins:reviewcreator plugin for Atlassian FishEye/Crucible.</description>
+    <description>This is the com.atlassian.example:reviewcreator plugin for Atlassian FishEye/Crucible.</description>
     <packaging>atlassian-plugin</packaging>
 
     <scm>
@@ -40,21 +40,12 @@
             <plugin>
                 <groupId>com.atlassian.maven.plugins</groupId>
                 <artifactId>maven-fecru-plugin</artifactId>
-                <version>3.0-rc1</version>
+                <version>3.1-m3-SNAPSHOT</version>
                 <extensions>true</extensions>
                 <configuration>
+                    <skipManifestValidation>true</skipManifestValidation>
                     <productVersion>${fecru.version}</productVersion>
                     <productDataVersion>${fecru.data.version}</productDataVersion>
-                    <instructions>
-                        <Import-Package>
-                            org.apache.log4j;version="1.2.9",
-                            com.atlassian.fisheye.*;version="${fecru.version}",
-                            com.atlassian.crucible.spi*;version="${fecru.version}",
-                            javax.servlet*;version="2.5",
-                            com.atlassian.event;version="0.5",
-                            org.apache.commons.lang;version="2.2"
-                        </Import-Package>
-                    </instructions>
                 </configuration>
             </plugin>
             <plugin>
@@ -66,6 +57,7 @@
             </plugin>
         </plugins>
     </build>
+
 
     <distributionManagement>
         <repository>
@@ -81,7 +73,7 @@
     </distributionManagement>
 
     <properties>
-        <fecru.version>2.1.0.M5-438</fecru.version>
+        <fecru.version>2.1.4-460</fecru.version>
         <fecru.data.version>2.1.0.M5-438</fecru.data.version>
     </properties>
 

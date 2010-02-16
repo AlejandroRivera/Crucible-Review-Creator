@@ -1,6 +1,8 @@
-package com.atlassian.plugins.reviewcreator;
+package com.atlassian.example.reviewcreator;
 
 import static org.junit.Assert.*;
+
+import com.atlassian.example.reviewcreator.ConfigurationManagerImpl;
 import org.junit.Test;
 import org.junit.Before;
 import com.atlassian.sal.api.pluginsettings.PluginSettings;

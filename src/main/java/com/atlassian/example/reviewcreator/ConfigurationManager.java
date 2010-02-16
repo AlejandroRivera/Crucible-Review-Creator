@@ -1,4 +1,4 @@
-package com.atlassian.plugins.reviewcreator;
+package com.atlassian.example.reviewcreator;
 
 import java.util.List;
 

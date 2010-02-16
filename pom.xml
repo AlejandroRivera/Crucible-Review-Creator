@@ -40,7 +40,7 @@
             <plugin>
                 <groupId>com.atlassian.maven.plugins</groupId>
                 <artifactId>maven-fecru-plugin</artifactId>
-                <version>3.1-m3-SNAPSHOT</version>
+                <version>3.1-m2</version>
                 <extensions>true</extensions>
                 <configuration>
                     <skipManifestValidation>true</skipManifestValidation>

@@ -49,6 +49,34 @@
         #end
         </tbody>
     </table>
+
+    <table class="adminTable">
+        <thead>
+            <th colspan="2">Configuration</th>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="2">
+                    <select name="createMode">
+                        ## these strings MUST represent the CreateMode enum's string values:
+                        <option value="ALWAYS"#if ($createMode == "ALWAYS") selected="selected"#end>Always</option>
+                        <option value="NEVER"#if ($createMode == "NEVER") selected="selected"#end>Never</option>
+                    </select>
+                    create reviews automatically, except for:
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    commits by users:
+                </td>
+                <td>
+                    <textarea title="Usernames are not validated and stored as-is. Use commas, whitespace and/or newlines as separators."
+                              name="committerNames">#foreach ($name in $committerNames)$name, #end</textarea><br>
+                    (comma-separated list of usernames)
+                </td>
+            </tr>
+        </tbody>
+    </table>
     #else
     <p style="color: DarkRed">Specify a valid (admin) user for this plugin to run as.</p>
     #end

@@ -15,4 +15,12 @@ public interface ConfigurationManager {
     List<String> loadEnabledProjects();
 
     void storeEnabledProjects(List<String> projectKeys);
+
+    List<String> loadCrucibleUserNames();
+
+    void storeCrucibleUserNames(List<String> usernames);
+
+    CreateMode loadCreateMode();
+
+    void storeCreateMode(CreateMode mode);
 }

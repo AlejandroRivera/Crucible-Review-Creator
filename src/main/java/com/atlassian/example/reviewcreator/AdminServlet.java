@@ -1,19 +1,19 @@
 package com.atlassian.example.reviewcreator;
 
-import com.atlassian.fisheye.plugin.web.helpers.VelocityHelper;
+import com.atlassian.crucible.spi.data.ProjectData;
 import com.atlassian.crucible.spi.services.ImpersonationService;
 import com.atlassian.crucible.spi.services.Operation;
 import com.atlassian.crucible.spi.services.ProjectService;
-import com.atlassian.crucible.spi.data.ProjectData;
+import com.atlassian.fisheye.plugin.web.helpers.VelocityHelper;
+import com.google.common.collect.Lists;
+import org.apache.commons.lang.StringUtils;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.*;
-
-import org.apache.commons.lang.StringUtils;
 
 public class AdminServlet extends HttpServlet {
 
@@ -49,18 +49,21 @@ public class AdminServlet extends HttpServlet {
                     return null;
                 }
             });
+
+            params.put("createMode", config.loadCreateMode().name());
+            params.put("committerNames", config.loadCrucibleUserNames());
         }
 
         response.setContentType("text/html");
-        velocity.renderVelocityTemplate("admin.vm", params, response.getWriter());
+        velocity.renderVelocityTemplate("templates/admin.vm", params, response.getWriter());
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
         final String username = req.getParameter("username");
-
         config.storeRunAsUser(username);
+
         final List<String> enabled = req.getParameterValues("enabled") == null ?
                 Collections.<String>emptyList() : Arrays.asList(req.getParameterValues("enabled"));
 
@@ -74,11 +77,18 @@ public class AdminServlet extends HttpServlet {
                 return null;
             }
         });
+
+        config.storeCreateMode(CreateMode.valueOf(req.getParameter("createMode")));
+
+        final String[] committerNames = StringUtils.split(req.getParameter("committerNames"), ",    \n\r");
+        config.storeCrucibleUserNames(committerNames == null ? Collections.<String>emptyList() :
+                Lists.newArrayList(committerNames));
+
         resp.sendRedirect("./reviewcreatoradmin");
     }
 
     /**
-     * Returns a list of all projects.
+     * Returns a set of all projects.
      * Note: this method must be run as a valid Crucible user.
      *
      * @return

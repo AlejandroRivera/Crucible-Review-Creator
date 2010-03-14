@@ -1,17 +1,16 @@
 package com.atlassian.example.reviewcreator;
 
-import com.atlassian.event.EventListener;
-import com.atlassian.event.Event;
-import com.atlassian.crucible.spi.services.*;
 import com.atlassian.crucible.spi.data.*;
+import com.atlassian.crucible.spi.services.*;
+import com.atlassian.event.Event;
+import com.atlassian.event.EventListener;
 import com.atlassian.fisheye.event.CommitEvent;
-import com.atlassian.fisheye.spi.services.RevisionDataService;
 import com.atlassian.fisheye.spi.data.ChangesetDataFE;
+import com.atlassian.fisheye.spi.services.RevisionDataService;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 import java.util.*;
-
-import org.apache.log4j.Logger;
-import org.apache.commons.lang.StringUtils;
 
 /**
  * <p>
@@ -48,6 +47,9 @@ public class CommitListener implements EventListener {
     private final ImpersonationService impersonator;    // provided by Crucible
     private final ConfigurationManager config;          // provided by our plugin
 
+    private static final ThreadLocal<Map<String, UserData>> committerToCrucibleUser =
+            new ThreadLocal();
+
     public CommitListener(ConfigurationManager config,
             ReviewService reviewService,
             ProjectService projectService,
@@ -73,7 +75,7 @@ public class CommitListener implements EventListener {
 
         if (isPluginEnabled()) {
             try {
-                // switch to admin user so we can access all projects:
+                // switch to admin user so we can access all projects and API services:
                 impersonator.doAsUser(null, config.loadRunAsUser(),
                     new Operation<Void, ServerException>() {
                         public Void perform() throws ServerException {
@@ -82,13 +84,18 @@ public class CommitListener implements EventListener {
                                     commit.getRepositoryName(), commit.getChangeSetId());
                             ProjectData project = getEnabledProjectForRepository(
                                     commit.getRepositoryName());
+                            committerToCrucibleUser.set(loadCommitterMappings(project.getDefaultRepositoryName()));
 
                             if (project != null) {
                                 String moderator = project.getDefaultModerator();
                                 if (moderator != null) {
-                                    // create the review:
-                                    createReview(commit.getRepositoryName(), cs, project, moderator);
-
+                                    if (shouldCreateReviewForCommitter(cs.getAuthor())) {
+                                        // create the review:
+                                        createReview(commit.getRepositoryName(), cs, project, moderator);
+                                    } else {
+                                        logger.info(String.format("Not creating a review for changeset %s.",
+                                                commit.getChangeSetId()));
+                                    }
                                 } else {
                                     logger.error(String.format("Unable to auto-create review for changeset %s. " +
                                             "No default moderator configured for project %s.",
@@ -107,6 +114,30 @@ public class CommitListener implements EventListener {
                         "review for changeset %s: %s.",
                         commit.getChangeSetId(), e.getMessage()), e);
             }
+        }
+    }
+
+    /**
+     * Determines whether or not the user that made the commit is exempt from
+     * automatic reviews, or whether the user is on the list of always having
+     * its commits automatically reviewed.
+     *
+     * @param committer
+     * @return
+     */
+    protected boolean shouldCreateReviewForCommitter(String committer) {
+
+        final UserData crucibleUser = committerToCrucibleUser.get().get(committer);
+        final boolean userInList = crucibleUser != null &&
+                config.loadCrucibleUserNames().contains(crucibleUser.getUserName());
+
+        switch (config.loadCreateMode()) {
+            case ALWAYS:
+                return !userInList;
+            case NEVER:
+                return userInList;
+            default:
+                throw new AssertionError("Unsupported create mode");
         }
     }
 
@@ -162,11 +193,9 @@ public class CommitListener implements EventListener {
     private ReviewData buildReviewTemplate(ChangesetDataFE cs, ProjectData project)
             throws ServerException {
 
-        final Map<String, UserData> committerToUser =
-                loadCommitterMappings(project.getDefaultRepositoryName());
-        final UserData creator = committerToUser.get(cs.getAuthor()) == null ?
+        final UserData creator = committerToCrucibleUser.get().get(cs.getAuthor()) == null ?
                 userService.getUser(project.getDefaultModerator()) :
-                committerToUser.get(cs.getAuthor());
+                committerToCrucibleUser.get().get(cs.getAuthor());
         final Date dueDate = project.getDefaultDuration() == null ? null :
                 DateHelper.addWorkingDays(new Date(), project.getDefaultDuration());
 

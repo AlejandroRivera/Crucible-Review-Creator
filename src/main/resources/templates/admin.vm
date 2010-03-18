@@ -67,12 +67,12 @@
             </tr>
             <tr>
                 <td>
-                    commits by users:
+                    commits made by users:
                 </td>
                 <td>
                     <textarea title="Usernames are not validated and stored as-is. Use commas, whitespace and/or newlines as separators."
-                              name="committerNames">#foreach ($name in $committerNames)$name, #end</textarea><br>
-                    (comma-separated list of usernames)
+                              name="committerNames">$stringUtils.join($committerNames, ", ")</textarea><br>
+                    (comma-separated list of <em>Crucible</em> usernames)
                 </td>
             </tr>
         </tbody>

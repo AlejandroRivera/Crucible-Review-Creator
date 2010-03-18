@@ -89,7 +89,7 @@ public class CommitListener implements EventListener {
                             if (project != null) {
                                 String moderator = project.getDefaultModerator();
                                 if (moderator != null) {
-                                    if (shouldCreateReviewForCommitter(cs.getAuthor())) {
+                                    if (isUnderScrutiny(cs.getAuthor())) {
                                         // create the review:
                                         createReview(commit.getRepositoryName(), cs, project, moderator);
                                     } else {
@@ -122,10 +122,11 @@ public class CommitListener implements EventListener {
      * automatic reviews, or whether the user is on the list of always having
      * its commits automatically reviewed.
      *
-     * @param committer
+     * @param committer the username that made the commit (the system will use
+     * the committer mapping information to find the associated Crucible user)
      * @return
      */
-    protected boolean shouldCreateReviewForCommitter(String committer) {
+    protected boolean isUnderScrutiny(String committer) {
 
         final UserData crucibleUser = committerToCrucibleUser.get().get(committer);
         final boolean userInList = crucibleUser != null &&

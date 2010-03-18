@@ -52,6 +52,7 @@ public class AdminServlet extends HttpServlet {
 
             params.put("createMode", config.loadCreateMode().name());
             params.put("committerNames", config.loadCrucibleUserNames());
+            params.put("stringUtils", new StringUtils());
         }
 
         response.setContentType("text/html");
@@ -78,7 +79,8 @@ public class AdminServlet extends HttpServlet {
             }
         });
 
-        config.storeCreateMode(CreateMode.valueOf(req.getParameter("createMode")));
+        config.storeCreateMode(CreateMode.valueOf(
+                Utils.defaultIfNull(req.getParameter("createMode"), CreateMode.ALWAYS.name())));
 
         final String[] committerNames = StringUtils.split(req.getParameter("committerNames"), ",    \n\r");
         config.storeCrucibleUserNames(committerNames == null ? Collections.<String>emptyList() :

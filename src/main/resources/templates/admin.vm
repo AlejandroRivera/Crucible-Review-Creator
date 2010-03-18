@@ -70,7 +70,7 @@
                     commits made by users:
                 </td>
                 <td>
-                    <textarea title="Usernames are not validated and stored as-is. Use commas, whitespace and/or newlines as separators."
+                    <textarea title="Invalid usernames are dropped. Use commas, whitespace and/or newlines as separators."
                               name="committerNames">$stringUtils.join($committerNames, ", ")</textarea><br>
                     (comma-separated list of <em>Crucible</em> usernames)
                 </td>

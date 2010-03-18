@@ -2,9 +2,14 @@ package com.atlassian.example.reviewcreator;
 
 import com.atlassian.crucible.spi.data.ProjectData;
 import com.atlassian.crucible.spi.services.ImpersonationService;
+import com.atlassian.crucible.spi.services.NotFoundException;
 import com.atlassian.crucible.spi.services.Operation;
 import com.atlassian.crucible.spi.services.ProjectService;
+import com.atlassian.crucible.spi.services.ServerException;
+import com.atlassian.crucible.spi.services.UserService;
 import com.atlassian.fisheye.plugin.web.helpers.VelocityHelper;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang.StringUtils;
 
@@ -13,12 +18,23 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class AdminServlet extends HttpServlet {
 
     private final ProjectService projectService;
     private final ImpersonationService impersonator;
+    private final UserService userService;
     private final VelocityHelper velocity;
     private final ConfigurationManager config;
 
@@ -26,10 +42,12 @@ public class AdminServlet extends HttpServlet {
             ConfigurationManager config,
             ProjectService projectService,
             ImpersonationService impersonator,
+            UserService userService,
             VelocityHelper velocity) {
         
         this.projectService = projectService;
         this.impersonator = impersonator;
+        this.userService = userService;
         this.velocity = velocity;
         this.config = config;
     }
@@ -60,8 +78,9 @@ public class AdminServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+    protected void doPost(final HttpServletRequest req, final HttpServletResponse resp)
             throws ServletException, IOException {
+
         final String username = req.getParameter("username");
         config.storeRunAsUser(username);
 
@@ -75,18 +94,45 @@ public class AdminServlet extends HttpServlet {
                     projects.add(new Project(p.getKey(), p.getName(), enabled.contains(p.getKey())));
                 }
                 storeProjects(projects);
+
+                config.storeCreateMode(CreateMode.valueOf(
+                        Utils.defaultIfNull(req.getParameter("createMode"), CreateMode.ALWAYS.name())));
+
+                final String[] committerNames = StringUtils.split(req.getParameter("committerNames"), ",    \n\r");
+                config.storeCrucibleUserNames(committerNames == null ? Collections.<String>emptyList() :
+                        getValidatedUsernames(Lists.newArrayList(committerNames)));
+
                 return null;
             }
         });
 
-        config.storeCreateMode(CreateMode.valueOf(
-                Utils.defaultIfNull(req.getParameter("createMode"), CreateMode.ALWAYS.name())));
-
-        final String[] committerNames = StringUtils.split(req.getParameter("committerNames"), ",    \n\r");
-        config.storeCrucibleUserNames(committerNames == null ? Collections.<String>emptyList() :
-                Lists.newArrayList(committerNames));
-
         resp.sendRedirect("./reviewcreatoradmin");
+    }
+
+    /**
+     * @param crucibleUsernames
+     * @return  the (sub)set of usernames that exist in the system. The names
+     * present in the specified list that are not present in the returned list
+     * represent invalid usernames.
+     */
+    private Collection<String> getValidatedUsernames(Collection<String> crucibleUsernames) {
+
+        return Collections2.filter(crucibleUsernames, new Predicate<String>() {
+            public boolean apply(String username) {
+                try {
+                    userService.getUser(username);
+                    return true;
+                } catch (NotFoundException nfe) {
+                    // Not very good practice to use exceptions for flow
+                    // control, but it's the only way to detect the existence
+                    // of a Crucible user.
+                    return false;
+                } catch (ServerException se) {
+                    throw new RuntimeException(String.format(
+                            "Error validating Crucible user \"%s\": %s", username, se.getMessage()), se);
+                }
+            }
+        });
     }
 
     /**
@@ -125,5 +171,4 @@ public class AdminServlet extends HttpServlet {
         }
         config.storeEnabledProjects(enabled);
     }
-
 }

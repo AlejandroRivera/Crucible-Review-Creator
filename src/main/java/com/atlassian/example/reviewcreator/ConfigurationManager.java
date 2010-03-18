@@ -1,5 +1,6 @@
 package com.atlassian.example.reviewcreator;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -16,9 +17,15 @@ public interface ConfigurationManager {
 
     void storeEnabledProjects(List<String> projectKeys);
 
-    List<String> loadCrucibleUserNames();
+    /**
+     * @since   v1.2
+     */
+    Collection<String> loadCrucibleUserNames();
 
-    void storeCrucibleUserNames(List<String> usernames);
+    /**
+     * @since   v1.2
+     */
+    void storeCrucibleUserNames(Collection<String> usernames);
 
     CreateMode loadCreateMode();
 

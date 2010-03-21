@@ -2,14 +2,25 @@ package com.atlassian.example.reviewcreator;
 
 public class Project {
 
+    private final int id;
     private final String key;
     private final String name;
     private final boolean enabled;
+    private final String moderator;
 
-    Project(String key, String name, boolean enabled) {
+    Project(int id, String key, String name, String moderator, boolean enabled) {
+        this.id = id;
         this.key = key;
         this.name = name;
+        this.moderator = moderator;
         this.enabled = enabled;
+    }
+
+    /**
+     * @since   v1.3
+     */
+    public int getId() {
+        return id;
     }
 
     public String getKey() {
@@ -18,6 +29,15 @@ public class Project {
 
     public String getName() {
         return name;
+    }
+
+    /**
+     * @since   v1.3
+     * @return  the username of this project's default moderator or
+     * <code>null</code> if not set.
+     */
+    public String getModerator() {
+        return moderator;
     }
 
     public boolean isEnabled() {
@@ -31,15 +51,13 @@ public class Project {
 
         Project project = (Project) o;
 
-        if (key != null ? !key.equals(project.key) : project.key != null) return false;
+        if (id != project.id) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = key != null ? key.hashCode() : 0;
-        result = 31 * result + (enabled ? 1 : 0);
-        return result;
+        return id;
     }
 }

@@ -68,6 +68,7 @@ public class AdminServlet extends HttpServlet {
                 }
             });
 
+            params.put("contextPath", request.getContextPath());
             params.put("createMode", config.loadCreateMode().name());
             params.put("committerNames", config.loadCrucibleUserNames());
             params.put("stringUtils", new StringUtils());
@@ -90,8 +91,9 @@ public class AdminServlet extends HttpServlet {
         impersonator.doAsUser(null, username, new Operation<Void, RuntimeException>() {
             public Void perform() throws RuntimeException {
                 final Set<Project> projects = new HashSet<Project>();
+                // TODO: use a google collections transformer
                 for (Project p : loadProjects()) {
-                    projects.add(new Project(p.getKey(), p.getName(), enabled.contains(p.getKey())));
+                    projects.add(new Project(p.getId(), p.getKey(), p.getName(), p.getModerator(), enabled.contains(p.getKey())));
                 }
                 storeProjects(projects);
 
@@ -151,7 +153,7 @@ public class AdminServlet extends HttpServlet {
             }
         });
         for (ProjectData p : projectService.getAllProjects()) {
-            projects.add(new Project(p.getKey(), p.getName(), enabledKeys.contains(p.getKey())));
+            projects.add(new Project(p.getId(), p.getKey(), p.getName(), p.getDefaultModerator(), enabledKeys.contains(p.getKey())));
         }
         return projects;
     }

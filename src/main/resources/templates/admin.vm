@@ -32,6 +32,7 @@
         <th>Enabled</th>
         <th>Project</th>
         <th>Project Name</th>
+        <th>Review Moderator</th>
         </thead>
         <tbody>
         #foreach ($project in $projects)
@@ -44,6 +45,14 @@
             </td>
             <td>
                 $project.Name
+            </td>
+            <td>
+            #if ($stringUtils.isEmpty($project.moderator))
+                <span title="Automatic review creation for this project will not work without a moderator." style="color: DarkRed">
+                    No moderator set. <a href="${contextPath}/admin/editProject.do?id=$project.id">[Specify one now]</a></span>
+            #else
+                $project.moderator
+            #end
             </td>
         </tr>
         #end

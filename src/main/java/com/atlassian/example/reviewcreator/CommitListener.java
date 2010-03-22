@@ -222,7 +222,7 @@ public class CommitListener implements EventListener {
                 null,   // review permaId
                 null,   // review summary
                 null,   // review state
-                true,   // allow anyone to join
+                project.isAllowReviewersToJoin(),
                 null,   // parent review
                 null,   // create data
                 null,   // close date

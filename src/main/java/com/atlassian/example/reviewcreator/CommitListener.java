@@ -7,6 +7,9 @@ import com.atlassian.event.EventListener;
 import com.atlassian.fisheye.event.CommitEvent;
 import com.atlassian.fisheye.spi.data.ChangesetDataFE;
 import com.atlassian.fisheye.spi.services.RevisionDataService;
+import com.atlassian.sal.api.user.UserManager;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -44,6 +47,7 @@ public class CommitListener implements EventListener {
     private final ReviewService reviewService;          // provided by Crucible
     private final ProjectService projectService;        // provided by Crucible
     private final UserService userService;              // provided by Crucible
+    private final UserManager userManager;              // provided by SAL
     private final ImpersonationService impersonator;    // provided by Crucible
     private final ConfigurationManager config;          // provided by our plugin
 
@@ -55,12 +59,14 @@ public class CommitListener implements EventListener {
             ProjectService projectService,
             RevisionDataService revisionService,
             UserService userService,
+            UserManager userManager,
             ImpersonationService impersonator) {
 
         this.reviewService = reviewService;
         this.revisionService = revisionService;
         this.projectService = projectService;
         this.userService = userService;
+        this.userManager = userManager;
         this.impersonator = impersonator;
         this.config = config;
     }
@@ -131,12 +137,18 @@ public class CommitListener implements EventListener {
         final UserData crucibleUser = committerToCrucibleUser.get().get(committer);
         final boolean userInList = crucibleUser != null &&
                 config.loadCrucibleUserNames().contains(crucibleUser.getUserName());
+        final boolean userInGroups = crucibleUser != null &&
+                Iterables.any(config.loadCrucibleGroups(), new Predicate<String>() {
+                    public boolean apply(String group) {
+                        return userManager.isUserInGroup(crucibleUser.getUserName(), group);
+                    }
+                });
 
         switch (config.loadCreateMode()) {
             case ALWAYS:
-                return !userInList;
+                return !(userInList || userInGroups);
             case NEVER:
-                return userInList;
+                return userInList || userInGroups;
             default:
                 throw new AssertionError("Unsupported create mode");
         }

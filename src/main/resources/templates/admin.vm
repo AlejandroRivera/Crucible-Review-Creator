@@ -84,6 +84,16 @@
                     (comma-separated list of <em>Crucible</em> usernames)
                 </td>
             </tr>
+            <tr>
+                <td>
+                    or users in groups:
+                </td>
+                <td>
+                    <textarea title="Group names are not validated. Use commas, whitespace and/or newlines as separators."
+                              name="groupNames">$stringUtils.join($groupNames, ", ")</textarea><br>
+                    (comma-separated list of groups)
+                </td>
+            </tr>
         </tbody>
     </table>
     #else

@@ -12,10 +12,12 @@ import java.util.List;
 
 public class ConfigurationManagerImpl implements ConfigurationManager {
 
-    private final String RUNAS_CFG      = "com.example.reviewcreator.runAs";
-    private final String PROJECTS_CFG   = "com.example.reviewcreator.projects";
-    private final String COMMITTER_CFG   = "com.example.reviewcreator.crucibleUsers";
-    private final String CREATE_MODE_CFG   = "com.example.reviewcreator.createMode";
+    // TODO: write an UpgradeTask to change these constant names to the plugin key
+    private final String RUNAS_CFG          = "com.example.reviewcreator.runAs";
+    private final String PROJECTS_CFG       = "com.example.reviewcreator.projects";
+    private final String COMMITTER_CFG      = "com.example.reviewcreator.crucibleUsers";
+    private final String GROUP_CFG          = "com.example.reviewcreator.crucibleGroups";
+    private final String CREATE_MODE_CFG    = "com.example.reviewcreator.createMode";
     private final PluginSettings store;
 
     public ConfigurationManagerImpl(PluginSettingsFactory settingsFactory) {
@@ -62,6 +64,14 @@ public class ConfigurationManagerImpl implements ConfigurationManager {
 
     public void storeCrucibleUserNames(Collection<String> usernames) {
         storeStringList(COMMITTER_CFG, usernames);
+    }
+
+    public Collection<String> loadCrucibleGroups() {
+        return loadStringList(GROUP_CFG);
+    }
+
+    public void storeCrucibleGroups(Collection<String> groupnames) {
+        storeStringList(GROUP_CFG, groupnames);
     }
 
     private void storeStringList(String key, Iterable<String> strings) {

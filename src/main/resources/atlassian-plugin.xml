@@ -10,9 +10,11 @@
     <!-- our crucible event listener -->
     <listener key="commit-listener" class="com.atlassian.example.reviewcreator.CommitListener"/>
 
-    <!-- persistence provided by SAL -->
+    <!-- persistence and group management provided by SAL -->
     <component-import key="pluginSettingsFactory"
                       interface="com.atlassian.sal.api.pluginsettings.PluginSettingsFactory" />
+    <component-import key="userManager"
+                      interface="com.atlassian.sal.api.user.UserManager"/>
 
     <!-- our Spring bean to manage config settings -->
     <component key="configurationManager"

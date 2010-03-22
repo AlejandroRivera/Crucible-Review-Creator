@@ -27,6 +27,16 @@ public interface ConfigurationManager {
      */
     void storeCrucibleUserNames(Collection<String> usernames);
 
+    /**
+     * @since   v1.3
+     */
+    Collection<String> loadCrucibleGroups();
+
+    /**
+     * @since   v1.3
+     */
+    void storeCrucibleGroups(Collection<String> groupnames);
+
     CreateMode loadCreateMode();
 
     void storeCreateMode(CreateMode mode);

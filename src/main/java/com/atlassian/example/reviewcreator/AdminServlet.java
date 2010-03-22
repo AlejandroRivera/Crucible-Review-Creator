@@ -71,6 +71,7 @@ public class AdminServlet extends HttpServlet {
             params.put("contextPath", request.getContextPath());
             params.put("createMode", config.loadCreateMode().name());
             params.put("committerNames", config.loadCrucibleUserNames());
+            params.put("groupNames", config.loadCrucibleGroups());
             params.put("stringUtils", new StringUtils());
         }
 
@@ -103,6 +104,10 @@ public class AdminServlet extends HttpServlet {
                 final String[] committerNames = StringUtils.split(req.getParameter("committerNames"), ",    \n\r");
                 config.storeCrucibleUserNames(committerNames == null ? Collections.<String>emptyList() :
                         getValidatedUsernames(Lists.newArrayList(committerNames)));
+
+                final String[] groupNames = StringUtils.split(req.getParameter("groupNames"), ",    \n\r");
+                config.storeCrucibleGroups(groupNames == null ? Collections.<String>emptyList() :
+                        Lists.newArrayList(groupNames));
 
                 return null;
             }

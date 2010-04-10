@@ -1,7 +1,8 @@
 <html>
 <head>
     <title>Automatic Review Creation for New Commits</title>
-    <meta name='decorator' content='atl.admin'/>
+    <meta name="decorator" content="atl.admin"/>
+    <meta name="admin.sectionName" content="Automatic Review Creation"/>
 </head>
 <body>
 <form method="post">

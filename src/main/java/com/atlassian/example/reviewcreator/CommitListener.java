@@ -214,7 +214,7 @@ public class CommitListener implements EventListener {
 
         return new ReviewData(
                 project.getKey(),
-                cs.getComment(),    // review name
+                Utils.firstNonEmptyLine(cs.getComment()),    // review name
                 StringUtils.defaultIfEmpty(project.getDefaultObjectives(), cs.getComment()),
                 creator,            // author
                 userService.getUser(project.getDefaultModerator()),

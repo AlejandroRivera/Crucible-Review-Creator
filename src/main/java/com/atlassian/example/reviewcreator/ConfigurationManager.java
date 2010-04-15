@@ -40,4 +40,14 @@ public interface ConfigurationManager {
     CreateMode loadCreateMode();
 
     void storeCreateMode(CreateMode mode);
+
+    /**
+     * @since   v1.4.1
+     */
+    boolean loadIterative();
+
+    /**
+     * @since   v1.4.1
+     */
+    void storeIterative(boolean iterative);
 }

@@ -1,6 +1,7 @@
 package com.atlassian.example.reviewcreator;
 
 import com.atlassian.crucible.spi.data.*;
+import com.atlassian.crucible.spi.PermId;
 import com.atlassian.crucible.spi.services.*;
 import com.atlassian.event.Event;
 import com.atlassian.event.EventListener;
@@ -9,6 +10,7 @@ import com.atlassian.fisheye.spi.data.ChangesetDataFE;
 import com.atlassian.fisheye.spi.services.RevisionDataService;
 import com.atlassian.sal.api.user.UserManager;
 import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -96,8 +98,10 @@ public class CommitListener implements EventListener {
                                 String moderator = project.getDefaultModerator();
                                 if (moderator != null) {
                                     if (isUnderScrutiny(cs.getAuthor())) {
-                                        // create the review:
-                                        createReview(commit.getRepositoryName(), cs, project, moderator);
+                                        if (!config.loadIterative() || !appendToReview(commit.getRepositoryName(), cs, project)) {
+                                            // create a new review:
+                                            createReview(commit.getRepositoryName(), cs, project, moderator);
+                                        }
                                     } else {
                                         logger.info(String.format("Not creating a review for changeset %s.",
                                                 commit.getChangeSetId()));
@@ -152,6 +156,54 @@ public class CommitListener implements EventListener {
             default:
                 throw new AssertionError("Unsupported create mode");
         }
+    }
+
+    /**
+     * Attempts to add the change set to an existing open review by scanning
+     * the commit message for review IDs in the current project. When multiple
+     * IDs are found, the first non-closed review is used.
+     *
+     * @param repoKey
+     * @param cs
+     * @param project
+     * @return  {@code true} if the change set was successfully added to an
+     * existing review, {@code false} otherwise.
+     */
+    private boolean appendToReview(final String repoKey, final ChangesetDataFE cs, final ProjectData project) {
+
+        final ReviewData review = getFirstOpenReview(Utils.extractReviewIds(cs.getComment(), project.getKey()));
+        if (review != null) {
+            try {
+                reviewService.addChangesetsToReview(review.getPermaId(), repoKey, Collections.singletonList(new ChangesetData(cs.getCsid())));
+                return true;
+            } catch (Exception e) {
+            	logger.info(String.format("Error appending changeset %s to review %s: %s",
+                        cs.getCsid(), review.getPermaId().getId(), e.getMessage()), e);
+	        }
+        }
+        return false;
+    }
+
+    private ReviewData getFirstOpenReview(Iterable<String> reviewIds) {
+
+        final Collection<ReviewData.State> acceptableStates = ImmutableSet.of(
+                ReviewData.State.Draft,
+                ReviewData.State.Approval,
+                ReviewData.State.Review);
+
+        for (String reviewId : reviewIds) {
+            try {
+                final ReviewData review = reviewService.getReview(new PermId<ReviewData>(reviewId), false);
+                if (acceptableStates.contains(review.getState())) {
+                    return review;
+                }
+            } catch (NotFoundException nfe) {
+                /* Exceptions for flow control is bad practice, but the API
+                 * has no exists() method.
+                 */
+            }
+        }
+        return null;
     }
 
     private void createReview(final String repoKey, final ChangesetDataFE cs,

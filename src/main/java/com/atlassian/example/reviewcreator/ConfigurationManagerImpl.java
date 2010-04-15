@@ -18,6 +18,7 @@ public class ConfigurationManagerImpl implements ConfigurationManager {
     private final String COMMITTER_CFG      = "com.example.reviewcreator.crucibleUsers";
     private final String GROUP_CFG          = "com.example.reviewcreator.crucibleGroups";
     private final String CREATE_MODE_CFG    = "com.example.reviewcreator.createMode";
+    private final String ITERATIVE_CFG      = "com.example.reviewcreator.iterative";
     private final PluginSettings store;
 
     public ConfigurationManagerImpl(PluginSettingsFactory settingsFactory) {
@@ -84,5 +85,16 @@ public class ConfigurationManagerImpl implements ConfigurationManager {
         return value == null ?
                 Collections.<String>emptyList() :
                 Arrays.asList(StringUtils.split(value.toString(), ';'));
+    }
+
+    public boolean loadIterative()
+    {
+        final Object value = store.get(ITERATIVE_CFG);
+        return value == null ? false : Boolean.parseBoolean(value.toString());
+    }
+
+    public void storeIterative(boolean iterative)
+    {
+        store.put(ITERATIVE_CFG, Boolean.toString(iterative));
     }
 }

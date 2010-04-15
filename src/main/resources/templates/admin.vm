@@ -95,6 +95,18 @@
                     (comma-separated list of groups)
                 </td>
             </tr>
+            <tr>
+                <td colspan="2">
+                    <hr>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <input type="checkbox" id="iterative" name="iterative"#if($iterative) checked="true"#end>
+                    <label for="iterative" title="Automatically add commits to the review that is mentioned in the commit message (instead of always creating a new review).">
+                        Enable iterative reviews</label>
+                </td>
+            </tr>
         </tbody>
     </table>
     #else

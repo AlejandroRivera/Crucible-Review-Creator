@@ -72,6 +72,7 @@ public class AdminServlet extends HttpServlet {
             params.put("createMode", config.loadCreateMode().name());
             params.put("committerNames", config.loadCrucibleUserNames());
             params.put("groupNames", config.loadCrucibleGroups());
+            params.put("iterative", config.loadIterative());
             params.put("stringUtils", new StringUtils());
         }
 
@@ -109,6 +110,7 @@ public class AdminServlet extends HttpServlet {
                 config.storeCrucibleGroups(groupNames == null ? Collections.<String>emptyList() :
                         Lists.newArrayList(groupNames));
 
+                config.storeIterative(req.getParameter("iterative") != null);
                 return null;
             }
         });

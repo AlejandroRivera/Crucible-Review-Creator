@@ -184,6 +184,14 @@ public class CommitListener implements EventListener {
         return false;
     }
 
+    /**
+     * Note that this check is broken in Crucible older than 2.2. In 2.1, the
+     * review state gets stale and won't always show the current state.
+     * See: http://jira.atlassian.com/browse/CRUC-2912
+     *
+     * @param reviewIds
+     * @return
+     */
     private ReviewData getFirstOpenReview(Iterable<String> reviewIds) {
 
         final Collection<ReviewData.State> acceptableStates = ImmutableSet.of(

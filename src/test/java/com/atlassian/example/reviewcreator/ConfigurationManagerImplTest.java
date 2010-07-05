@@ -2,20 +2,12 @@ package com.atlassian.example.reviewcreator;
 
 import static org.junit.Assert.*;
 
-import com.atlassian.example.reviewcreator.ConfigurationManagerImpl;
 import org.junit.Test;
 import org.junit.Before;
 import com.atlassian.sal.api.pluginsettings.PluginSettings;
 
 import java.util.*;
 
-/**
- * Created by IntelliJ IDEA.
- * User: administrator
- * Date: Oct 22, 2009
- * Time: 10:23:43 AM
- * To change this template use File | Settings | File Templates.
- */
 public class ConfigurationManagerImplTest {
 
     private SettingsMock store;

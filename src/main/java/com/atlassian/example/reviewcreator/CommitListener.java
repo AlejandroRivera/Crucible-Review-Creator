@@ -272,24 +272,16 @@ public class CommitListener implements EventListener {
         final Date dueDate = project.getDefaultDuration() == null ? null :
                 DateHelper.addWorkingDays(new Date(), project.getDefaultDuration());
 
-        return new ReviewData(
-                project.getKey(),
-                Utils.firstNonEmptyLine(cs.getComment()),    // review name
-                StringUtils.defaultIfEmpty(project.getDefaultObjectives(), cs.getComment()),
-                creator,            // author
-                userService.getUser(project.getDefaultModerator()),
-                creator,            // creator
-                null,   // review permaId
-                null,   // review summary
-                null,   // review state
-                project.isAllowReviewersToJoin(),
-                null,   // parent review
-                null,   // create data
-                null,   // close date
-                dueDate,
-                0,      // defect metrics version; unused during creation
-                null    // jira issue key
-        );
+        return new ReviewDataBuilder()
+                .setProjectKey(project.getKey())
+                .setName(Utils.firstNonEmptyLine(cs.getComment()))
+                .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), cs.getComment()))
+                .setAuthor(creator)
+                .setModerator(userService.getUser(project.getDefaultModerator()))
+                .setCreator(creator)
+                .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
+                .setDueDate(dueDate)
+                .build();
     }
 
     /**

@@ -177,7 +177,7 @@ public class CommitListener implements EventListener {
                 reviewService.addChangesetsToReview(review.getPermaId(), repoKey, Collections.singletonList(new ChangesetData(cs.getCsid())));
                 return true;
             } catch (Exception e) {
-            	logger.info(String.format("Error appending changeset %s to review %s: %s",
+            	logger.warn(String.format("Error appending changeset %s to review %s: %s",
                         cs.getCsid(), review.getPermaId().getId(), e.getMessage()), e);
 	        }
         }

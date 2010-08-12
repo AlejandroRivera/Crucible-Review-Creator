@@ -172,15 +172,19 @@ public class CommitListener implements EventListener {
      * @return  {@code true} if the change set was successfully added to an
      * existing review, {@code false} otherwise.
      */
-    private boolean appendToReview(final String repoKey, final ChangesetDataFE cs, final ProjectData project)
-            throws ServerException {
+    private boolean appendToReview(final String repoKey, final ChangesetDataFE cs, final ProjectData project) {
 
-        // switch to user moderator:
-        return impersonator.doAsUser(null, project.getDefaultModerator(), new Operation<Boolean, ServerException>() {
-            public Boolean perform() throws ServerException {
+        final ReviewData review = getFirstOpenReview(Utils.extractReviewIds(cs.getComment(), project.getKey()));
 
-                final ReviewData review = getFirstOpenReview(Utils.extractReviewIds(cs.getComment(), project.getKey()));
-                if (review != null) {
+        if (review != null) {
+
+            // impersonate the review's moderator (or creator if there is no moderator set):
+            return impersonator.doAsUser(null,
+                    Utils.defaultIfNull(review.getModerator(), review.getCreator()).getUserName(),
+                    new Operation<Boolean, RuntimeException>() {
+
+                public Boolean perform() throws RuntimeException {
+
                     try {
                         reviewService.addChangesetsToReview(review.getPermaId(), repoKey, Collections.singletonList(new ChangesetData(cs.getCsid())));
                         addComment(review, String.format(
@@ -191,10 +195,11 @@ public class CommitListener implements EventListener {
                         logger.warn(String.format("Error appending changeset %s to review %s: %s",
                                 cs.getCsid(), review.getPermaId().getId(), e.getMessage()), e);
                     }
+                    return false;
                 }
-                return false;
-            }
-        });
+            });
+        }
+        return false;
     }
 
     /**

@@ -8,6 +8,7 @@ import com.atlassian.event.EventListener;
 import com.atlassian.fisheye.event.CommitEvent;
 import com.atlassian.fisheye.spi.data.ChangesetDataFE;
 import com.atlassian.fisheye.spi.services.RevisionDataService;
+import com.atlassian.sal.api.ApplicationProperties;
 import com.atlassian.sal.api.user.UserManager;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
@@ -45,13 +46,14 @@ public class CommitListener implements EventListener {
 
     private final Logger logger = Logger.getLogger(getClass().getName());
 
-    private final RevisionDataService revisionService;  // provided by FishEye
-    private final ReviewService reviewService;          // provided by Crucible
-    private final ProjectService projectService;        // provided by Crucible
-    private final UserService userService;              // provided by Crucible
-    private final UserManager userManager;              // provided by SAL
-    private final ImpersonationService impersonator;    // provided by Crucible
-    private final ConfigurationManager config;          // provided by our plugin
+    private final RevisionDataService revisionService;          // provided by FishEye
+    private final ReviewService reviewService;                  // provided by Crucible
+    private final ProjectService projectService;                // provided by Crucible
+    private final UserService userService;                      // provided by Crucible
+    private final UserManager userManager;                      // provided by SAL
+    private final ApplicationProperties applicationProperties;  // provided by SAL
+    private final ImpersonationService impersonator;            // provided by Crucible
+    private final ConfigurationManager config;                  // provided by our plugin
 
     private static final ThreadLocal<Map<String, UserData>> committerToCrucibleUser =
             new ThreadLocal();
@@ -62,7 +64,8 @@ public class CommitListener implements EventListener {
             RevisionDataService revisionService,
             UserService userService,
             UserManager userManager,
-            ImpersonationService impersonator) {
+            ImpersonationService impersonator,
+            ApplicationProperties applicationProperties) {
 
         this.reviewService = reviewService;
         this.revisionService = revisionService;
@@ -71,6 +74,7 @@ public class CommitListener implements EventListener {
         this.userManager = userManager;
         this.impersonator = impersonator;
         this.config = config;
+        this.applicationProperties = applicationProperties;
     }
 
     public Class[] getHandledEventClasses() {
@@ -95,12 +99,11 @@ public class CommitListener implements EventListener {
                             committerToCrucibleUser.set(loadCommitterMappings(project.getDefaultRepositoryName()));
 
                             if (project != null) {
-                                String moderator = project.getDefaultModerator();
-                                if (moderator != null) {
+                                if (project.getDefaultModerator() != null) {
                                     if (isUnderScrutiny(cs.getAuthor())) {
                                         if (!config.loadIterative() || !appendToReview(commit.getRepositoryName(), cs, project)) {
                                             // create a new review:
-                                            createReview(commit.getRepositoryName(), cs, project, moderator);
+                                            createReview(commit.getRepositoryName(), cs, project);
                                         }
                                     } else {
                                         logger.info(String.format("Not creating a review for changeset %s.",
@@ -169,19 +172,29 @@ public class CommitListener implements EventListener {
      * @return  {@code true} if the change set was successfully added to an
      * existing review, {@code false} otherwise.
      */
-    private boolean appendToReview(final String repoKey, final ChangesetDataFE cs, final ProjectData project) {
+    private boolean appendToReview(final String repoKey, final ChangesetDataFE cs, final ProjectData project)
+            throws ServerException {
 
-        final ReviewData review = getFirstOpenReview(Utils.extractReviewIds(cs.getComment(), project.getKey()));
-        if (review != null) {
-            try {
-                reviewService.addChangesetsToReview(review.getPermaId(), repoKey, Collections.singletonList(new ChangesetData(cs.getCsid())));
-                return true;
-            } catch (Exception e) {
-            	logger.warn(String.format("Error appending changeset %s to review %s: %s",
-                        cs.getCsid(), review.getPermaId().getId(), e.getMessage()), e);
-	        }
-        }
-        return false;
+        // switch to user moderator:
+        return impersonator.doAsUser(null, project.getDefaultModerator(), new Operation<Boolean, ServerException>() {
+            public Boolean perform() throws ServerException {
+
+                final ReviewData review = getFirstOpenReview(Utils.extractReviewIds(cs.getComment(), project.getKey()));
+                if (review != null) {
+                    try {
+                        reviewService.addChangesetsToReview(review.getPermaId(), repoKey, Collections.singletonList(new ChangesetData(cs.getCsid())));
+                        addComment(review, String.format(
+                                "The Automatic Review Creator Plugin added changeset [r%s|%s/changelog/%s/?cs=%s] to this review.",
+                                cs.getCsid(), applicationProperties.getBaseUrl(), repoKey, cs.getCsid()));
+                        return true;
+                    } catch (Exception e) {
+                        logger.warn(String.format("Error appending changeset %s to review %s: %s",
+                                cs.getCsid(), review.getPermaId().getId(), e.getMessage()), e);
+                    }
+                }
+                return false;
+            }
+        });
     }
 
     /**
@@ -215,13 +228,13 @@ public class CommitListener implements EventListener {
     }
 
     private void createReview(final String repoKey, final ChangesetDataFE cs,
-                              final ProjectData project, String moderator)
+                              final ProjectData project)
             throws ServerException {
 
         final ReviewData template = buildReviewTemplate(cs, project);
 
         // switch to user moderator:
-        impersonator.doAsUser(null, moderator, new Operation<Void, ServerException>() {
+        impersonator.doAsUser(null, project.getDefaultModerator(), new Operation<Void, ServerException>() {
             public Void perform() throws ServerException {
 
                 // create a new review:
@@ -235,6 +248,7 @@ public class CommitListener implements EventListener {
 
                 // start the review, so everyone is notified:
                 reviewService.changeState(review.getPermaId(), "action:approveReview");
+                addComment(review, "This review was created by the Automatic Review Creator Plugin.");
 
                 logger.info(String.format("Auto-created review %s for " +
                         "commit %s:%s with moderator %s.",
@@ -243,6 +257,28 @@ public class CommitListener implements EventListener {
                 return null;
             }
         });
+    }
+
+    /**
+     * Must be called within the context of a user.
+     *
+     * @param review
+     * @param message
+     */
+    private void addComment(final ReviewData review, final String message) {
+
+        final GeneralCommentData comment = new GeneralCommentData();
+        comment.setCreateDate(new Date());
+        comment.setDraft(false);
+        comment.setDeleted(false);
+        comment.setMessage(message);
+
+        try {
+            reviewService.addGeneralComment(review.getPermaId(), comment);
+        } catch (Exception e) {
+            logger.error(String.format("Unable to add a general comment to review %s: %s",
+                    review.getPermaId().getId(), e.getMessage()), e);
+        }
     }
 
     private void addReviewers(ReviewData review, ProjectData project) {

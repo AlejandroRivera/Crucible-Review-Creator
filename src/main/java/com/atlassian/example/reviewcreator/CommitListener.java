@@ -8,7 +8,6 @@ import com.atlassian.event.EventListener;
 import com.atlassian.fisheye.event.CommitEvent;
 import com.atlassian.fisheye.spi.data.ChangesetDataFE;
 import com.atlassian.fisheye.spi.services.RevisionDataService;
-import com.atlassian.sal.api.ApplicationProperties;
 import com.atlassian.sal.api.user.UserManager;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
@@ -51,7 +50,6 @@ public class CommitListener implements EventListener {
     private final ProjectService projectService;                // provided by Crucible
     private final UserService userService;                      // provided by Crucible
     private final UserManager userManager;                      // provided by SAL
-    private final ApplicationProperties applicationProperties;  // provided by SAL
     private final ImpersonationService impersonator;            // provided by Crucible
     private final ConfigurationManager config;                  // provided by our plugin
 
@@ -64,8 +62,7 @@ public class CommitListener implements EventListener {
             RevisionDataService revisionService,
             UserService userService,
             UserManager userManager,
-            ImpersonationService impersonator,
-            ApplicationProperties applicationProperties) {
+            ImpersonationService impersonator) {
 
         this.reviewService = reviewService;
         this.revisionService = revisionService;
@@ -74,7 +71,6 @@ public class CommitListener implements EventListener {
         this.userManager = userManager;
         this.impersonator = impersonator;
         this.config = config;
-        this.applicationProperties = applicationProperties;
     }
 
     public Class[] getHandledEventClasses() {
@@ -188,8 +184,8 @@ public class CommitListener implements EventListener {
                     try {
                         reviewService.addChangesetsToReview(review.getPermaId(), repoKey, Collections.singletonList(new ChangesetData(cs.getCsid())));
                         addComment(review, String.format(
-                                "The Automatic Review Creator Plugin added changeset [r%s|%s/changelog/%s/?cs=%s] to this review.",
-                                cs.getCsid(), applicationProperties.getBaseUrl(), repoKey, cs.getCsid()));
+                                "The Automatic Review Creator Plugin added changeset {cs:id=%s|rep=%s} to this review.",
+                                cs.getCsid(), repoKey));
                         return true;
                     } catch (Exception e) {
                         logger.warn(String.format("Error appending changeset %s to review %s: %s",

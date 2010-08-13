@@ -15,8 +15,6 @@
                       interface="com.atlassian.sal.api.pluginsettings.PluginSettingsFactory" />
     <component-import key="userManager"
                       interface="com.atlassian.sal.api.user.UserManager"/>
-    <component-import key="applicationProperties"
-                      interface="com.atlassian.sal.api.ApplicationProperties"/>
 
     <!-- our Spring bean to manage config settings -->
     <component key="configurationManager"

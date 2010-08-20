@@ -88,13 +88,13 @@ public class CommitListener implements EventListener {
                     new Operation<Void, ServerException>() {
                         public Void perform() throws ServerException {
 
-                            ChangesetDataFE cs = revisionService.getChangeset(
+                            final ChangesetDataFE cs = revisionService.getChangeset(
                                     commit.getRepositoryName(), commit.getChangeSetId());
-                            ProjectData project = getEnabledProjectForRepository(
+                            final ProjectData project = getEnabledProjectForRepository(
                                     commit.getRepositoryName());
-                            committerToCrucibleUser.set(loadCommitterMappings(project.getDefaultRepositoryName()));
 
                             if (project != null) {
+                                committerToCrucibleUser.set(loadCommitterMappings(project.getDefaultRepositoryName()));
                                 if (project.getDefaultModerator() != null) {
                                     if (isUnderScrutiny(cs.getAuthor())) {
                                         if (!config.loadIterative() || !appendToReview(commit.getRepositoryName(), cs, project)) {

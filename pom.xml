@@ -45,10 +45,9 @@
             <plugin>
                 <groupId>com.atlassian.maven.plugins</groupId>
                 <artifactId>maven-fecru-plugin</artifactId>
-                <version>3.1.2</version>
+                <version>3.7</version>
                 <extensions>true</extensions>
                 <configuration>
-                    <skipManifestValidation>true</skipManifestValidation>
                     <productVersion>${fecru.version}</productVersion>
                     <productDataVersion>${fecru.data.version}</productDataVersion>
                 </configuration>
@@ -56,8 +55,8 @@
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>1.5</source>
-                    <target>1.5</target>
+                    <source>1.6</source>
+                    <target>1.6</target>
                 </configuration>
             </plugin>
         </plugins>
@@ -78,8 +77,9 @@
     </distributionManagement>
 
     <properties>
-        <fecru.version>2.3.0-480</fecru.version>
-        <fecru.data.version>2.3.0-480</fecru.data.version>
+        <fecru.version>2.7.6-20111107234450</fecru.version>
+        <fecru.data.version>2.7.6-20111107234450</fecru.data.version>
+        <amps.version>3.7</amps.version>
     </properties>
 
 </project>

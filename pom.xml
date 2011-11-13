@@ -19,14 +19,15 @@
         <developerConnection>scm:svn:https://svn.atlassian.com/svn/public/atlassian/crucible/plugins/review-creator/trunk</developerConnection>
         <url>http://svn.atlassian.com/fisheye/browse/public/atlassian/crucible/plugins/review-creator/trunk</url>
     </scm>
+    
+    <properties>
+        <fecru.version>2.7.6-20111107234450</fecru.version>
+        <fecru.data.version>2.7.6-20111107234450</fecru.data.version>
+        <sal.version>2.6.0</sal.version>
+        <amps.version>3.7</amps.version>
+    </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.6</version>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>com.atlassian.fisheye</groupId>
             <artifactId>atlassian-fisheye-api</artifactId>
@@ -37,7 +38,16 @@
             <groupId>com.atlassian.sal</groupId>
             <artifactId>sal-api</artifactId>
             <version>${sal.version}</version>
-            <scope>provided</scope> <!-- Uses the application's SAL instead of bundling it into the plugin. -->
+            <scope>provided</scope>
+        </dependency>
+        
+        <!-- Non-Atlassian dependencies -->
+        
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.6</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -74,7 +84,6 @@
         </plugins>
     </build>
 
-
     <distributionManagement>
         <repository>
             <id>atlassian-m2-repository</id>
@@ -87,12 +96,5 @@
             <url>davs://maven.atlassian.com/public-snapshot</url>
         </snapshotRepository>
     </distributionManagement>
-
-    <properties>
-        <fecru.version>2.7.6-20111107234450</fecru.version>
-        <fecru.data.version>2.7.6-20111107234450</fecru.data.version>
-        <sal.version>2.6.0</sal.version>
-        <amps.version>3.7</amps.version>
-    </properties>
 
 </project>

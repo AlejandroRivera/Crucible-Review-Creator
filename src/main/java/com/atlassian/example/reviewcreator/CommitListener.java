@@ -309,16 +309,17 @@ public class CommitListener implements EventListener {
         final Date dueDate = project.getDefaultDuration() == null ? null :
                 DateHelper.addWorkingDays(new Date(), project.getDefaultDuration());
 
-        return new ReviewDataBuilder()
-                .setProjectKey(project.getKey())
-                .setName(Utils.firstNonEmptyLine(cs.getComment()))
-                .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), cs.getComment()))
-                .setAuthor(creator)
-                .setModerator(userService.getUser(project.getDefaultModerator()))
-                .setCreator(creator)
-                .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
-                .setDueDate(dueDate)
-                .build();
+        ReviewData.Builder builder = new ReviewData.Builder();
+        builder.setProjectKey(project.getKey())
+               .setName(Utils.firstNonEmptyLine(cs.getComment()))
+               .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), cs.getComment()))
+               .setAuthor(creator)
+               .setModerator(userService.getUser(project.getDefaultModerator()))
+               .setCreator(creator)
+               .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
+               .setDueDate(dueDate);
+
+        return builder.build();
     }
 
     /**

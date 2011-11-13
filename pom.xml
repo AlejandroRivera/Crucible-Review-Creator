@@ -34,6 +34,18 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.atlassian.sal</groupId>
+            <artifactId>sal-api</artifactId>
+            <version>${sal.version}</version>
+            <scope>provided</scope> <!-- Uses the application's SAL instead of bundling it into the plugin. -->
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring</artifactId>
+            <version>2.5.5</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.collections</groupId>
             <artifactId>google-collections</artifactId>
             <version>1.0-rc2</version>
@@ -79,6 +91,7 @@
     <properties>
         <fecru.version>2.7.6-20111107234450</fecru.version>
         <fecru.data.version>2.7.6-20111107234450</fecru.data.version>
+        <sal.version>2.6.0</sal.version>
         <amps.version>3.7</amps.version>
     </properties>
 

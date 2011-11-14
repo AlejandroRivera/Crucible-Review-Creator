@@ -3,117 +3,113 @@
     <title>Automatic Review Creation for New Commits</title>
     <meta name="decorator" content="atl.admin"/>
     <meta name="admin.sectionName" content="Automatic Review Creation"/>
+    <style type="text/css">
+        dl {
+            margin-top: 20px;
+            margin-left: 10px;
+        }
+        dl dt {
+            width: 150px;
+            float:left;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #c0c0c0;
+        }
+        dl dd {
+            margin-left: 150px;
+        }
+        p {
+            margin-top: 10px;
+            margin-left: 10px;
+            width: 600px;
+        }
+    </style>
 </head>
 <body>
 <form method="post">
-    <table class="adminTable">
-        <tbody>
-            <tr>
-                <td>
-                    <p>
-                    This plugin subscribes to commit events and creates a review for
-                    each commit.
-                    </p>
-                    <p>
-                    Auto review creation can be enabled/disabled on a
-                    per-project basis. Enabled projects must be bound to a FishEye repository
-                    and must have a default Moderator configured in the admin section.
-                    </p>
-                    <p>
-                        Run plugin as user (not used as review moderator):
-                        <input type="text" size="15" name="username" value="#if ($username)$username#end"/>
-                    </p>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-    #if ($username)
-    <table class="adminTable sortable">
-        <thead>
-        <th>Enabled</th>
-        <th>Project</th>
-        <th>Project Name</th>
-        <th>Review Moderator</th>
-        </thead>
-        <tbody>
-        #foreach ($project in $projects)
-        <tr>
-            <td>
-                <input type="checkbox" name="enabled" value="$project.Key"#if ($project.Enabled) checked="true"#end/>
-            </td>
-            <td>
-                $project.Key
-            </td>
-            <td>
-                $project.Name
-            </td>
-            <td>
-            #if ($stringUtils.isEmpty($project.moderator))
-                <span title="Automatic review creation for this project will not work without a moderator." style="color: DarkRed">
-                    No moderator set. <a href="${contextPath}/admin/editProject.do?id=$project.id">[Specify one now]</a></span>
-            #else
-                $project.moderator
-            #end
-            </td>
-        </tr>
-        #end
-        </tbody>
-    </table>
+    
+    <p>
+        This plugin will listen to commit events and create a review for each commit.<br/>
+        If configured to do iterative reviews, this plugin will add changesets to existing code reviews.
+    </p>
+    <p>
+        <b>Important:</b> Auto review creation can be enabled/disabled on a per-project basis. 
+        Enabled projects <em>must</em> be bound to a FishEye repository
+        and <em>must</em> have a default Moderator configured in the admin section.
+    </p>
 
-    <table class="adminTable">
-        <thead>
-            <th colspan="2">Configuration</th>
-        </thead>
-        <tbody>
-            <tr>
-                <td colspan="2">
-                    <select name="createMode">
-                        ## these strings MUST represent the CreateMode enum's string values:
-                        <option value="ALWAYS"#if ($createMode == "ALWAYS") selected="selected"#end>Always</option>
-                        <option value="NEVER"#if ($createMode == "NEVER") selected="selected"#end>Never</option>
-                    </select>
-                    create reviews automatically, except for:
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    commits made by users:
-                </td>
-                <td>
-                    <textarea title="Invalid usernames are dropped. Use commas, whitespace and/or newlines as separators."
-                              name="committerNames">$stringUtils.join($committerNames, ", ")</textarea><br>
-                    (comma-separated list of <em>Crucible</em> usernames)
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    or users in groups:
-                </td>
-                <td>
-                    <textarea title="Group names are not validated. Use commas, whitespace and/or newlines as separators."
-                              name="groupNames">$stringUtils.join($groupNames, ", ")</textarea><br>
-                    (comma-separated list of groups)
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2">
-                    <hr>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <input type="checkbox" id="iterative" name="iterative"#if($iterative) checked="true"#end>
-                    <label for="iterative" title="Automatically add commits to the review that is mentioned in the commit message (instead of always creating a new review).">
-                        Enable iterative reviews</label>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <dl>
+        <dt>Run plugin as:</dt>
+        <dd><input type="text" size="15" name="username" value="#if ($username)$username#end"/></dd>
+        <dd>This user should have administrator rights. It will <em>not</em> be used as 'Review Moderator'  </dd>
+    </dl>
+
+    #if ($username)
+    <dl>
+        <dt>Enabled Projects:</dt>
+        #foreach ($project in $projects)
+            <dd>
+                <label>
+                    <input type="checkbox" name="enabled" value="$project.Key"
+                        #if ($project.Enabled) checked="true" #end
+                        #if ($stringUtils.isEmpty($project.moderator)) disabled="DISABLED" #end
+                    />
+                    $project.Name ($project.Key)
+                    <br/>
+                    <span style="margin-left:20px">Moderator:
+                    #if ($stringUtils.isEmpty($project.moderator))
+                        <a href="${contextPath}/admin/editProject.do?id=$project.id">[Specify moderator to enable project]</a>
+                    #else
+                        $project.moderator
+                        <a href="${contextPath}/admin/editProject.do?id=$project.id">[Update]</a>
+                    #end
+                    </span>
+                </label><br/><br/>
+            </dd>
+        #end
+    </dl>
+
+    <dl>
+        <dt>Iterative Reviews: </dt>
+        <dd>
+            <label>
+                <input type="checkbox" id="iterative" name="iterative"#if($iterative) checked="true"#end>
+                Enabled
+            </label>
+        </dd>
+        <dd><em>Iterative reviews require the Crucible Project to be used in the commit message.</em></dd>
+    </dl>
+        
+    <dl>
+        <dt>Create Reviews:</dt>
+        <dd>
+            <select name="createMode">
+                ## these strings MUST represent the CreateMode enum's string values:
+                <option value="ALWAYS"#if ($createMode == "ALWAYS") selected="selected"#end>Always</option>
+                <option value="NEVER"#if ($createMode == "NEVER") selected="selected"#end>Never</option>
+            </select>
+        </dd>
+    </dl>
+        
+    <dl>
+        <dt>Except for</dt>
+        <dd>
+        Users: <em>(Invalid Crucible usernames are ignored.)</em><br/>
+        <textarea name="committerNames">$stringUtils.join($committerNames, ", ")</textarea>
+        </dd>
+        <dd>or groups: <em>(Group names are not validated)</em><br/>
+        <textarea name="groupNames">$stringUtils.join($groupNames, ", ")</textarea>
+        </dd>
+        <dd><em>Use commas, whitespace and/or newlines as separators</em></dd>
+    </dl>    
+    
+
     #else
     <p style="color: DarkRed">Specify a valid (admin) user for this plugin to run as.</p>
     #end
-    <p>
-        <input type="submit" value="save"/>
+    <dl>
+        <dd><input type="submit" value="Save"/></dd>
+    </dl>
+        
     </p>
 </form>
 </body>

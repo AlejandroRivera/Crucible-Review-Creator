@@ -1,7 +1,6 @@
 package com.atlassian.example.reviewcreator;
 
 import com.atlassian.crucible.spi.data.*;
-import com.atlassian.crucible.spi.PermId;
 import com.atlassian.crucible.spi.services.*;
 import com.atlassian.event.Event;
 import com.atlassian.event.EventListener;
@@ -10,10 +9,11 @@ import com.atlassian.fisheye.spi.data.ChangesetDataFE;
 import com.atlassian.fisheye.spi.services.RevisionDataService;
 import com.atlassian.sal.api.user.UserManager;
 import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -43,7 +43,7 @@ import java.util.*;
  */
 public class CommitListener implements EventListener {
 
-    private final Logger logger = Logger.getLogger(getClass().getName());
+    private final Logger logger = LoggerFactory.getLogger(CommitListener.class);
 
     private final RevisionDataService revisionService;          // provided by FishEye
     private final ReviewService reviewService;                  // provided by Crucible
@@ -52,9 +52,9 @@ public class CommitListener implements EventListener {
     private final UserManager userManager;                      // provided by SAL
     private final ImpersonationService impersonator;            // provided by Crucible
     private final ConfigurationManager config;                  // provided by our plugin
+    private final SearchService searchService;                  // provided by our plugin
 
-    private static final ThreadLocal<Map<String, UserData>> committerToCrucibleUser =
-            new ThreadLocal();
+    private static final ThreadLocal<Map<String, UserData>> committerToCrucibleUser = new ThreadLocal<Map<String,UserData>>();
 
     public CommitListener(ConfigurationManager config,
             ReviewService reviewService,
@@ -62,7 +62,8 @@ public class CommitListener implements EventListener {
             RevisionDataService revisionService,
             UserService userService,
             UserManager userManager,
-            ImpersonationService impersonator) {
+            ImpersonationService impersonator,
+            SearchService searchService) {
 
         this.reviewService = reviewService;
         this.revisionService = revisionService;
@@ -71,6 +72,7 @@ public class CommitListener implements EventListener {
         this.userManager = userManager;
         this.impersonator = impersonator;
         this.config = config;
+        this.searchService = searchService;
     }
 
     public Class[] getHandledEventClasses() {
@@ -81,48 +83,48 @@ public class CommitListener implements EventListener {
 
         final CommitEvent commit = (CommitEvent) event;
 
-        if (isPluginEnabled()) {
-            try {
-                // switch to admin user so we can access all projects and API services:
-                impersonator.doAsUser(null, config.loadRunAsUser(),
-                    new Operation<Void, ServerException>() {
-                        public Void perform() throws ServerException {
+        if (!isPluginEnabled()) {
+            return;
+        }
 
-                            final ChangesetDataFE cs = revisionService.getChangeset(
-                                    commit.getRepositoryName(), commit.getChangeSetId());
-                            final ProjectData project = getEnabledProjectForRepository(
-                                    commit.getRepositoryName());
+        Operation<Void, ServerException> operation = new Operation<Void, ServerException>() {
+            public Void perform() throws ServerException {
+                final ChangesetDataFE cs = revisionService.getChangeset(commit.getRepositoryName(), commit.getChangeSetId());
+                final ProjectData project = getEnabledProjectForRepository(commit.getRepositoryName());
 
-                            if (project != null) {
-                                committerToCrucibleUser.set(loadCommitterMappings(project.getDefaultRepositoryName()));
-                                if (project.getDefaultModerator() != null) {
-                                    if (isUnderScrutiny(cs.getAuthor())) {
-                                        if (!config.loadIterative() || !appendToReview(commit.getRepositoryName(), cs, project)) {
-                                            // create a new review:
-                                            createReview(commit.getRepositoryName(), cs, project);
-                                        }
-                                    } else {
-                                        logger.info(String.format("Not creating a review for changeset %s.",
-                                                commit.getChangeSetId()));
-                                    }
-                                } else {
-                                    logger.error(String.format("Unable to auto-create review for changeset %s. " +
-                                            "No default moderator configured for project %s.",
-                                            commit.getChangeSetId(), project.getKey()));
-                                }
-                            } else {
-                                logger.error(String.format("Unable to auto-create review for changeset %s. " +
-                                        "No projects found that bind to repository %s.",
-                                        commit.getChangeSetId(), commit.getRepositoryName()));
-                            }
-                            return null;
-                        }
-                    });
-            } catch (Exception e) {
-                logger.error(String.format("Unable to auto-create " +
-                        "review for changeset %s: %s.",
-                        commit.getChangeSetId(), e.getMessage()), e);
+                if (project == null) {
+                    logger.error(String.format("Unable to auto-create review for changeset %s. No projects found that bind to repository %s.",
+                            commit.getChangeSetId(), commit.getRepositoryName()));
+                    return null;
+                }
+
+                committerToCrucibleUser.set(loadCommitterMappings(project.getDefaultRepositoryName()));
+                if (project.getDefaultModerator() == null) {
+                    logger.error(String.format("Unable to auto-create review for changeset %s. No default moderator configured for project %s.",
+                            commit.getChangeSetId(), project.getKey()));
+                    return null;
+                }
+
+                if (!isUnderScrutiny(cs.getAuthor())) {
+                    logger.info(String.format("Not creating a review for changeset %s because author is not under review",
+                            commit.getChangeSetId()));
+                    return null;
+                }
+
+                if (!config.loadIterative() || !appendToReview(commit.getRepositoryName(), cs, project)) {
+                    // create a new review:
+                    createReview(commit.getRepositoryName(), cs, project);
+                }
+                return null;
             }
+        };
+
+        try {
+            // switch to admin user so we can access all projects and API services:
+            impersonator.doAsUser(null, config.loadRunAsUser(), operation);
+        } catch (Exception e) {
+            logger.error(String.format("Unable to auto-create review for changeset %s: %s.",
+                    commit.getChangeSetId(), e.getMessage()), e);
         }
     }
 
@@ -133,15 +135,12 @@ public class CommitListener implements EventListener {
      *
      * @param committer the username that made the commit (the system will use
      * the committer mapping information to find the associated Crucible user)
-     * @return
      */
     protected boolean isUnderScrutiny(String committer) {
 
         final UserData crucibleUser = committerToCrucibleUser.get().get(committer);
-        final boolean userInList = crucibleUser != null &&
-                config.loadCrucibleUserNames().contains(crucibleUser.getUserName());
-        final boolean userInGroups = crucibleUser != null &&
-                Iterables.any(config.loadCrucibleGroups(), new Predicate<String>() {
+        final boolean userInList = crucibleUser != null && config.loadCrucibleUserNames().contains(crucibleUser.getUserName());
+        final boolean userInGroups = crucibleUser != null && Iterables.any(config.loadCrucibleGroups(), new Predicate<String>() {
                     public boolean apply(String group) {
                         return userManager.isUserInGroup(crucibleUser.getUserName(), group);
                     }
@@ -162,80 +161,78 @@ public class CommitListener implements EventListener {
      * the commit message for review IDs in the current project. When multiple
      * IDs are found, the first non-closed review is used.
      *
-     * @param repoKey
-     * @param cs
-     * @param project
      * @return  {@code true} if the change set was successfully added to an
      * existing review, {@code false} otherwise.
      */
     private boolean appendToReview(final String repoKey, final ChangesetDataFE cs, final ProjectData project) {
 
-        final ReviewData review = getFirstOpenReview(Utils.extractReviewIds(cs.getComment(), project.getKey()));
+        Set<String> branches = cs.getBranches();
+        if (branches.isEmpty() || branches.contains("master")  || branches.contains("master_raptor2")) {
+            logger.info("Not appending to review because commit branches are empty or `master` is found");
+            return false;
+        }
 
-        if (review != null) {
+        String jiraKey = createJiraKey(cs);
+        List<ReviewData> reviewDatas;
+        try {
+            reviewDatas = searchService.searchForReviewsByJiraKey(jiraKey);
+        } catch (Exception e) {
+            logger.warn("Couldn't perform search for existing reviews by JIRA Key: " + jiraKey, e);
+            return false;
+        }
 
-            // impersonate the review's moderator (or creator if there is no moderator set):
-            return impersonator.doAsUser(null,
-                    Utils.defaultIfNull(review.getModerator(), review.getCreator()).getUserName(),
-                    new Operation<Boolean, RuntimeException>() {
+        Predicate<ReviewData> predicate = new Predicate<ReviewData>() {
+            public boolean apply(ReviewData input) {
+                return input.getState() == ReviewData.State.Draft
+                        || input.getState() == ReviewData.State.Approval
+                        || input.getState() == ReviewData.State.Review;
+            }
+        };
 
-                public Boolean perform() throws RuntimeException {
+        final ReviewData review;
+        try {
+            review = Iterables.find(reviewDatas, predicate);
+        }
+        catch (NoSuchElementException e){
+            return false;
+        }
 
-                    try {
-                        reviewService.addChangesetsToReview(review.getPermaId(), repoKey, Collections.singletonList(new ChangesetData(cs.getCsid())));
-                        addComment(review, String.format(
-                                "The Automatic Review Creator Plugin added changeset {cs:id=%s|rep=%s} to this review.",
-                                cs.getCsid(), repoKey));
-                        return true;
-                    } catch (Exception e) {
-                        logger.warn(String.format("Error appending changeset %s to review %s: %s",
-                                cs.getCsid(), review.getPermaId().getId(), e.getMessage()), e);
-                    }
+        Operation<Boolean, RuntimeException> operation = new Operation<Boolean, RuntimeException>() {
+            public Boolean perform() throws RuntimeException {
+                try {
+                    reviewService.addChangesetsToReview(review.getPermaId(), repoKey,
+                            Collections.singletonList(new ChangesetData(cs.getCsid())));
+                    addComment(review, cs.getComment());
+                    return true;
+                } catch (Exception e) {
+                    logger.warn(String.format("Error appending changeset %s to review %s: %s",
+                            cs.getCsid(), review.getPermaId().getId(), e.getMessage()), e);
                     return false;
                 }
-            });
-        }
-        return false;
-    }
-
-    /**
-     * Note that this check is broken in Crucible older than 2.2. In 2.1, the
-     * review state gets stale and won't always show the current state.
-     * See: http://jira.atlassian.com/browse/CRUC-2912
-     *
-     * @param reviewIds
-     * @return
-     */
-    private ReviewData getFirstOpenReview(Iterable<String> reviewIds) {
-
-        final Collection<ReviewData.State> acceptableStates = ImmutableSet.of(
-                ReviewData.State.Draft,
-                ReviewData.State.Approval,
-                ReviewData.State.Review);
-
-        for (String reviewId : reviewIds) {
-            try {
-                final ReviewData review = reviewService.getReview(new PermId<ReviewData>(reviewId), false);
-                if (acceptableStates.contains(review.getState())) {
-                    return review;
-                }
-            } catch (NotFoundException nfe) {
-                /* Exceptions for flow control is bad practice, but the API
-                 * has no exists() method.
-                 */
             }
+        };
+        String author = cs.getAuthor();
+        UserData committer = committerToCrucibleUser.get().get(author.toLowerCase());
+        try {
+            return impersonator.doAsUser(null, committer.getUserName(), operation);
+        } catch (Exception e){
+            logger.warn(String.format("Couldn't append changeset %s to existing review %s",
+                    cs.getCsid(), review.getPermaId().getId()), e);
+            return false;
         }
-        return null;
     }
 
-    private void createReview(final String repoKey, final ChangesetDataFE cs,
-                              final ProjectData project)
-            throws ServerException {
+    private void createReview(final String repoKey, final ChangesetDataFE cs, final ProjectData project) {
 
         final ReviewData template = buildReviewTemplate(cs, project);
+        if (template == null) return;
 
-        // switch to user moderator:
-        impersonator.doAsUser(null, project.getDefaultModerator(), new Operation<Void, ServerException>() {
+        if (cs.getBranches().isEmpty() || cs.getBranches().contains("master") || cs.getBranches().contains("master_raptor2")){
+            logger.info("Skipping review creation since it's not a feature branch.");
+            return;
+        }
+
+        Operation<Void, ServerException> operation = new Operation<Void, ServerException>() {
             public Void perform() throws ServerException {
 
                 // create a new review:
@@ -246,18 +243,38 @@ public class CommitListener implements EventListener {
 
                 // add the project's default reviewers:
                 addReviewers(review, project);
+                addComment(review, cs.getComment());
 
                 // start the review, so everyone is notified:
-                reviewService.changeState(review.getPermaId(), "action:approveReview");
-                addComment(review, "This review was created by the Automatic Review Creator Plugin.");
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    logger.warn(e.getLocalizedMessage(), e);
+                }
+                reviewService.changeState(review.getPermaId(), ReviewService.Action.Approve);
 
                 logger.info(String.format("Auto-created review %s for " +
-                        "commit %s:%s with moderator %s.",
+                                "commit %s:%s with moderator %s.",
                         review.getPermaId(), repoKey,
                         cs.getCsid(), review.getModerator().getUserName()));
                 return null;
             }
-        });
+        };
+        // switch to user moderator:
+        String author = cs.getAuthor();
+        UserData committer = committerToCrucibleUser.get().get(author.toLowerCase());
+        try {
+            impersonator.doAsUser(null, committer.getUserName(), operation);
+        } catch (ServerException e) {
+            logger.error("Couldn't create review: " + e.getLocalizedMessage(), e);
+        }
+    }
+
+    private String createJiraKey(ChangesetDataFE cs) {
+        String jiraKey = cs.getBranches().iterator().next();
+        jiraKey = jiraKey.replaceAll("\\W", "");
+        jiraKey = jiraKey + "-1";
+        return jiraKey;
     }
 
     /**
@@ -283,10 +300,21 @@ public class CommitListener implements EventListener {
     }
 
     private void addReviewers(ReviewData review, ProjectData project) {
-        final List<String> reviewers = project.getDefaultReviewerUsers();
+        final List<String> reviewers = Lists.newArrayList(project.getDefaultReviewerUsers());
+
         if (reviewers != null && !reviewers.isEmpty()) {
-            reviewService.addReviewers(review.getPermaId(),
-                    reviewers.toArray(new String[reviewers.size()]));
+            if (review.getAuthor() != null && reviewers.contains(review.getAuthor().getUserName()))
+                reviewers.remove(review.getAuthor().getUserName());
+            if (review.getModerator() != null && reviewers.contains(review.getModerator().getUserName()))
+                reviewers.remove(review.getModerator().getUserName());
+
+            String[] reviewersArray = reviewers.toArray(new String[reviewers.size()]);
+            try {
+                reviewService.addReviewers(review.getPermaId(), reviewersArray);
+            }
+            catch (Exception e) {
+                logger.warn("Couldn't add default reviewers: " + e.getLocalizedMessage(), e);
+            }
         }
     }
 
@@ -294,32 +322,31 @@ public class CommitListener implements EventListener {
      * <p>
      * This method must be invoked with admin permissions.
      * </p>
-     *
-     * @param cs
-     * @param project
-     * @return
-     * @throws ServerException
      */
-    private ReviewData buildReviewTemplate(ChangesetDataFE cs, ProjectData project)
-            throws ServerException {
+    private ReviewData buildReviewTemplate(ChangesetDataFE cs, ProjectData project){
 
-        final UserData creator = committerToCrucibleUser.get().get(cs.getAuthor()) == null ?
-                userService.getUser(project.getDefaultModerator()) :
-                committerToCrucibleUser.get().get(cs.getAuthor());
+        final UserData creator = committerToCrucibleUser.get().get(cs.getAuthor().toLowerCase());
         final Date dueDate = project.getDefaultDuration() == null ? null :
                 DateHelper.addWorkingDays(new Date(), project.getDefaultDuration());
 
         ReviewData.Builder builder = new ReviewData.Builder();
         builder.setProjectKey(project.getKey())
-               .setName(Utils.firstNonEmptyLine(cs.getComment()))
-               .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), cs.getComment()))
-               .setAuthor(creator)
-               .setModerator(userService.getUser(project.getDefaultModerator()))
-               .setCreator(creator)
-               .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
-               .setDueDate(dueDate);
+                .setName(cs.getBranches().iterator().next())
+                .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), ""))
+                .setAuthor(creator)
+                .setModerator(creator)
+                .setCreator(creator)
+                .setState(ReviewData.State.Draft)
+                .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
+                .setJiraIssueKey(createJiraKey(cs))
+                .setDueDate(dueDate);
 
-        return builder.build();
+        try {
+            return builder.build();
+        } catch (Exception e){
+            logger.warn("Couldn't build template for new review", e.getStackTrace());
+            return null;
+        }
     }
 
     /**

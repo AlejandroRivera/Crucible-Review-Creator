@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
@@ -21,10 +22,10 @@
     </scm>
     
     <properties>
-        <fecru.version>2.7.6-20111107234450</fecru.version>
-        <fecru.data.version>2.7.6-20111107234450</fecru.data.version>
+        <fecru.version>3.2.0-20131126215459</fecru.version>
+        <fecru.data.version>${fecru.version}</fecru.data.version>
         <sal.version>2.6.0</sal.version>
-        <amps.version>3.7</amps.version>
+        <amps.version>5.0.4</amps.version>
     </properties>
 
     <dependencies>
@@ -37,8 +38,10 @@
         <dependency>
             <groupId>com.atlassian.sal</groupId>
             <artifactId>sal-api</artifactId>
-            <version>${sal.version}</version>
-            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.atlassian.plugins</groupId>
+            <artifactId>atlassian-plugins-spring</artifactId>
         </dependency>
         
         <!-- Non-Atlassian dependencies -->
@@ -50,26 +53,37 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring</artifactId>
-            <version>2.5.5</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>com.google.collections</groupId>
             <artifactId>google-collections</artifactId>
             <version>1.0-rc2</version>
         </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+        </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.atlassian.fisheye</groupId>
+                <artifactId>atlassian-fisheye-provided-libs</artifactId>
+                <version>${fecru.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <plugins>
             <plugin>
                 <groupId>com.atlassian.maven.plugins</groupId>
                 <artifactId>maven-fecru-plugin</artifactId>
-                <version>3.7</version>
+                <version>${amps.version}</version>
                 <extensions>true</extensions>
                 <configuration>
+                    <skipManifestValidation>true</skipManifestValidation>
                     <productVersion>${fecru.version}</productVersion>
                     <productDataVersion>${fecru.data.version}</productDataVersion>
                 </configuration>
@@ -77,8 +91,8 @@
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <source>1.5</source>
+                    <target>1.5</target>
                 </configuration>
             </plugin>
         </plugins>

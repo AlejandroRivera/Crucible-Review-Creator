@@ -139,6 +139,11 @@ public class CommitListener implements EventListener {
     protected boolean isUnderScrutiny(String committer) {
 
         final UserData crucibleUser = committerToCrucibleUser.get().get(committer);
+        if (crucibleUser == null) {
+            logger.warn("Couldn't determine if the committer is under scrutiny: " + committer);
+            return true;
+        }
+
         final boolean userInList = crucibleUser != null && config.loadCrucibleUserNames().contains(crucibleUser.getUserName());
         final boolean userInGroups = crucibleUser != null && Iterables.any(config.loadCrucibleGroups(), new Predicate<String>() {
                     public boolean apply(String group) {
@@ -211,10 +216,9 @@ public class CommitListener implements EventListener {
                 }
             }
         };
-        String author = cs.getAuthor();
-        UserData committer = committerToCrucibleUser.get().get(author.toLowerCase());
+        String username = getCommitterUser(cs, project.getDefaultModerator()).getUserName();
         try {
-            return impersonator.doAsUser(null, committer.getUserName(), operation);
+            return impersonator.doAsUser(null, username, operation);
         } catch (Exception e){
             logger.warn(String.format("Couldn't append changeset %s to existing review %s",
                     cs.getCsid(), review.getPermaId().getId()), e);
@@ -261,12 +265,29 @@ public class CommitListener implements EventListener {
             }
         };
         // switch to user moderator:
-        String author = cs.getAuthor();
-        UserData committer = committerToCrucibleUser.get().get(author.toLowerCase());
+        String userName = getCommitterUser(cs, project.getDefaultModerator()).getUserName();
         try {
-            impersonator.doAsUser(null, committer.getUserName(), operation);
+            impersonator.doAsUser(null, userName, operation);
         } catch (ServerException e) {
             logger.error("Couldn't create review: " + e.getLocalizedMessage(), e);
+        }
+    }
+
+
+    private UserData getCommitterUser(ChangesetDataFE cs, String moderatorUsername) {
+        String author = cs.getAuthor().toLowerCase();
+        UserData userData = committerToCrucibleUser.get().get(author);
+        if (userData != null){
+            return userData;
+        }
+        else {
+            try {
+                logger.warn("Couldn't find user info for: " + author + " in " + committerToCrucibleUser.get());
+                return userService.getUser(moderatorUsername);
+            } catch (ServerException e) {
+                logger.error("Couldn't retrieve moderator from UserService: " + moderatorUsername);
+                return null;
+            }
         }
     }
 
@@ -325,7 +346,7 @@ public class CommitListener implements EventListener {
      */
     private ReviewData buildReviewTemplate(ChangesetDataFE cs, ProjectData project){
 
-        final UserData creator = committerToCrucibleUser.get().get(cs.getAuthor().toLowerCase());
+        final UserData creator = getCommitterUser(cs, project.getDefaultModerator());
         final Date dueDate = project.getDefaultDuration() == null ? null :
                 DateHelper.addWorkingDays(new Date(), project.getDefaultDuration());
 

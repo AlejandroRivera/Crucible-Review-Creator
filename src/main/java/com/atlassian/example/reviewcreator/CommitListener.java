@@ -275,7 +275,7 @@ public class CommitListener implements EventListener {
 
 
     private UserData getCommitterUser(ChangesetDataFE cs, String moderatorUsername) {
-        String author = cs.getAuthor().toLowerCase();
+        String author = cs.getAuthor();
         UserData userData = committerToCrucibleUser.get().get(author);
         if (userData != null){
             return userData;

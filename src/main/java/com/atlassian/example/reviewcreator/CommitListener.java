@@ -91,11 +91,19 @@ public class CommitListener implements EventListener {
             public Void perform() throws ServerException {
                 final ChangesetDataFE cs = revisionService.getChangeset(commit.getRepositoryName(), commit.getChangeSetId());
                 final ProjectData project = getEnabledProjectForRepository(commit.getRepositoryName());
-
+                
+                
                 if (project == null) {
                     logger.error(String.format("Unable to auto-create review for changeset %s. No projects found that bind to repository %s.",
                             commit.getChangeSetId(), commit.getRepositoryName()));
                     return null;
+                }
+                final String branchForProject = getBranchForProject(commit.getRepositoryName());
+                if(branchForProject != "" && branchForProject.equals(cs.getBranch()) == false)
+                {
+                    logger.info(String.format("Commit skiped because of branch is %s but branch filter is %s",
+                    		cs.getBranch(), branchForProject));
+                	return null;
                 }
 
                 committerToCrucibleUser.set(loadCommitterMappings(project.getDefaultRepositoryName()));
@@ -430,6 +438,28 @@ public class CommitListener implements EventListener {
         }
         return committerToUser;
     }
+    
+    /**
+     * Returns a brunch for repository
+     * This method must be invoked with admin permissions.
+     * </p>
+     *
+     * @param   repoKey
+     * @return  branchNAme
+     */
+    private String getBranchForProject(String repoKey) {
+
+        final List<ProjectData> projects = projectService.getAllProjects();
+        final Map<String, String> branches = config.loadBranchFilters();
+        for (ProjectData project : projects) {
+            if (repoKey.equals(project.getDefaultRepositoryName()) &&
+            		branches.containsKey(project.getKey())) {
+                return branches.get(project.getKey());
+            }
+        }
+        return "";
+    }
+    
     
     private boolean isPluginEnabled() {
         return !StringUtils.isEmpty(config.loadRunAsUser());

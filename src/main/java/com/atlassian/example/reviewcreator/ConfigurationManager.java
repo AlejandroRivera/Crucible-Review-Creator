@@ -1,6 +1,7 @@
 package com.atlassian.example.reviewcreator;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -17,6 +18,10 @@ public interface ConfigurationManager {
 
     void storeEnabledProjects(List<String> projectKeys);
 
+    Map<String, String> loadBranchFilters();
+    
+    void storeBranchFilters(Map<String, String> branchFilters);
+    
     /**
      * @since   v1.2
      */

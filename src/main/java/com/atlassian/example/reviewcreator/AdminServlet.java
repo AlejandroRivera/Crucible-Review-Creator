@@ -95,7 +95,9 @@ public class AdminServlet extends HttpServlet {
                 final Set<Project> projects = new HashSet<Project>();
                 // TODO: use a google collections transformer
                 for (Project p : loadProjects()) {
-                    projects.add(new Project(p.getId(), p.getKey(), p.getName(), p.getModerator(), enabled.contains(p.getKey())));
+                    final List<String> branches = req.getParameterValues(p.getKey() + " branchName") == null ?
+                            Collections.<String>emptyList() : Arrays.asList(req.getParameterValues(p.getKey() + " branchName"));
+                    projects.add(new Project(p.getId(), p.getKey(), p.getName(), p.getModerator(), enabled.contains(p.getKey()), branches.size() == 1 ? branches.get(0): ""));
                 }
                 storeProjects(projects);
 
@@ -153,14 +155,15 @@ public class AdminServlet extends HttpServlet {
     private Set<Project> loadProjects() {
 
         final List<String> enabledKeys = config.loadEnabledProjects();
-
+        final Map<String, String> branchFilters = config.loadBranchFilters();
+        
         final Set<Project> projects = new TreeSet<Project>(new Comparator<Project>() {
             public int compare(Project p1, Project p2) {
                 return p1.getKey().compareTo(p2.getKey());
             }
         });
         for (ProjectData p : projectService.getAllProjects()) {
-            projects.add(new Project(p.getId(), p.getKey(), p.getName(), p.getDefaultModerator(), enabledKeys.contains(p.getKey())));
+            projects.add(new Project(p.getId(), p.getKey(), p.getName(), p.getDefaultModerator(), enabledKeys.contains(p.getKey()), branchFilters.get(p.getKey())));
         }
         return projects;
     }
@@ -173,11 +176,14 @@ public class AdminServlet extends HttpServlet {
     private void storeProjects(Set<Project> projects) {
 
         final List<String> enabled = new ArrayList<String>();
+        final Map<String, String> branchFilters = new HashMap<String, String>();
         for (Project p : projects) {
             if (p.isEnabled()) {
                 enabled.add(p.getKey());
             }
+            branchFilters.put(p.getKey(), p.getBranchName());
         }
         config.storeEnabledProjects(enabled);
+        config.storeBranchFilters(branchFilters);
     }
 }

@@ -357,23 +357,28 @@ public class CommitListener implements EventListener {
         final UserData creator = getCommitterUser(cs, project.getDefaultModerator());
         final Date dueDate = project.getDefaultDuration() == null ? null :
                 DateHelper.addWorkingDays(new Date(), project.getDefaultDuration());
-
-        ReviewData.Builder builder = new ReviewData.Builder();
-        builder.setProjectKey(project.getKey())
-                .setName(cs.getBranches().iterator().next())
-                .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), ""))
-                .setAuthor(creator)
-                .setModerator(creator)
-                .setCreator(creator)
-                .setState(ReviewData.State.Draft)
-                .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
-                .setJiraIssueKey(createJiraKey(cs))
-                .setDueDate(dueDate);
-
         try {
-            return builder.build();
-        } catch (Exception e){
-            logger.warn("Couldn't build template for new review", e.getStackTrace());
+            ReviewData.Builder builder = new ReviewData.Builder();
+            builder.setProjectKey(project.getKey())
+                    .setName(cs.getBranches().iterator().next())
+                    .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), ""))
+                    .setAuthor(creator)
+                    .setModerator(userService.getUser(project.getDefaultModerator()))
+                    .setCreator(userService.getUser(config.loadRunAsUser()))
+                    .setState(ReviewData.State.Draft)
+                    .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
+                    .setJiraIssueKey(createJiraKey(cs))
+                    .setDueDate(dueDate);
+
+            try {
+                return builder.build();
+            } catch (Exception e){
+                logger.warn("Couldn't build template for new review", e.getStackTrace());
+                return null;
+            }
+        }
+        catch (ServerException e){
+            logger.error("Couldn't retrieve moderator from UserService");
             return null;
         }
     }

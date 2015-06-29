@@ -283,7 +283,7 @@ public class CommitListener implements EventListener {
 
 
     private UserData getCommitterUser(ChangesetDataFE cs, String moderatorUsername) {
-        String author = cs.getAuthor();
+        String author = cs.getAuthor().toLowerCase();
         UserData userData = committerToCrucibleUser.get().get(author);
         if (userData != null){
             return userData;
@@ -364,7 +364,7 @@ public class CommitListener implements EventListener {
                     .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), ""))
                     .setAuthor(creator)
                     .setModerator(userService.getUser(project.getDefaultModerator()))
-                    .setCreator(userService.getUser(config.loadRunAsUser()))
+                    .setCreator(creator)
                     .setState(ReviewData.State.Draft)
                     .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
                     .setJiraIssueKey(createJiraKey(cs))

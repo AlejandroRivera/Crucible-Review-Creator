@@ -185,7 +185,7 @@ public class CommitListener implements EventListener {
             return false;
         }
 
-        String jiraKey = createJiraKey(cs);
+        String jiraKey = createJiraKey(project);
         List<ReviewData> reviewDatas;
         try {
             reviewDatas = searchService.searchForReviewsByJiraKey(jiraKey);
@@ -193,10 +193,22 @@ public class CommitListener implements EventListener {
             logger.warn("Couldn't perform search for existing reviews by JIRA Key: " + jiraKey, e);
             return false;
         }
+        
+        for(int i = reviewDatas.size() - 1; i >= 0; i--)
+        {
+
+            String author = committerToCrucibleUser.get().get(cs.getAuthor().toLowerCase()).getUserName();
+            if(reviewDatas.get(i).getAuthor().getUserName() != author
+                || reviewDatas.get(i).getModerator().getUserName() != project.getDefaultModerator()
+                || reviewDatas.get(i).getCreator().getUserName() != author)
+            {
+                reviewDatas.remove(i);
+            }
+        }
 
         Predicate<ReviewData> predicate = new Predicate<ReviewData>() {
             public boolean apply(ReviewData input) {
-                return input.getState() == ReviewData.State.Draft
+            	return input.getState() == ReviewData.State.Draft
                         || input.getState() == ReviewData.State.Approval
                         || input.getState() == ReviewData.State.Review;
             }
@@ -299,8 +311,8 @@ public class CommitListener implements EventListener {
         }
     }
 
-    private String createJiraKey(ChangesetDataFE cs) {
-        String jiraKey = cs.getBranches().iterator().next();
+    private String createJiraKey( ProjectData project) {
+        String jiraKey = project.getKey();
         jiraKey = jiraKey.replaceAll("\\W", "");
         jiraKey = jiraKey + "-1";
         return jiraKey;
@@ -367,7 +379,7 @@ public class CommitListener implements EventListener {
                     .setCreator(creator)
                     .setState(ReviewData.State.Draft)
                     .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
-                    .setJiraIssueKey(createJiraKey(cs))
+                    .setJiraIssueKey(createJiraKey(project))
                     .setDueDate(dueDate);
 
             try {

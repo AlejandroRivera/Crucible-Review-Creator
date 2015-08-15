@@ -5,16 +5,14 @@ import com.atlassian.sal.api.pluginsettings.PluginSettings;
 import com.atlassian.sal.api.pluginsettings.PluginSettingsFactory;
 import org.apache.commons.lang.StringUtils;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class ConfigurationManagerImpl implements ConfigurationManager {
 
     // TODO: write an UpgradeTask to change these constant names to the plugin key
     private final String RUNAS_CFG          = "com.example.reviewcreator.runAs";
     private final String PROJECTS_CFG       = "com.example.reviewcreator.projects";
+    private final String BRANCHES_CFG       = "com.example.reviewcreator.branches";
     private final String COMMITTER_CFG      = "com.example.reviewcreator.crucibleUsers";
     private final String GROUP_CFG          = "com.example.reviewcreator.crucibleGroups";
     private final String CREATE_MODE_CFG    = "com.example.reviewcreator.createMode";
@@ -51,6 +49,31 @@ public class ConfigurationManagerImpl implements ConfigurationManager {
         store.put(CREATE_MODE_CFG, mode.name());
     }
 
+    public Map<String, String> loadBranchFilters() {
+        List<String> keyBranches = loadStringList(BRANCHES_CFG);
+    	Map<String,String> map = new HashMap<String,String>();
+        for (String keyBranch : keyBranches) {
+        	String[] arr = StringUtils.split(keyBranch, ',');
+        	if(arr.length == 2)
+        	{
+        		map.put(arr[0], arr[1]);
+        	}
+        	else if(arr.length == 1)
+        	{
+        		map.put(arr[0], "");
+        	}
+		}
+    	return map;
+    }
+
+    public void storeBranchFilters(Map<String, String> branchFilters) {
+    	List<String> keyBranches = new ArrayList<String>();
+        for (String  key : branchFilters.keySet()) {
+        	keyBranches.add(key + "," + branchFilters.get(key));
+		}
+        storeStringList(BRANCHES_CFG, keyBranches);
+    }
+    
     public List<String> loadEnabledProjects() {
         return loadStringList(PROJECTS_CFG);
     }

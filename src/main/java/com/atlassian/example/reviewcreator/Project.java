@@ -7,13 +7,15 @@ public class Project {
     private final String name;
     private final boolean enabled;
     private final String moderator;
+    private final String branchName;
 
-    Project(int id, String key, String name, String moderator, boolean enabled) {
+    Project(int id, String key, String name, String moderator, boolean enabled, String branchName) {
         this.id = id;
         this.key = key;
         this.name = name;
         this.moderator = moderator;
         this.enabled = enabled;
+        this.branchName = branchName;
     }
 
     /**
@@ -36,6 +38,11 @@ public class Project {
      * @return  the username of this project's default moderator or
      * <code>null</code> if not set.
      */
+    public String getBranchName() {
+    	
+        return branchName != null ? branchName : "";
+    }
+
     public String getModerator() {
         return moderator;
     }

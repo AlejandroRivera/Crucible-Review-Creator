@@ -91,11 +91,19 @@ public class CommitListener implements EventListener {
             public Void perform() throws ServerException {
                 final ChangesetDataFE cs = revisionService.getChangeset(commit.getRepositoryName(), commit.getChangeSetId());
                 final ProjectData project = getEnabledProjectForRepository(commit.getRepositoryName());
-
+                
+                
                 if (project == null) {
                     logger.error(String.format("Unable to auto-create review for changeset %s. No projects found that bind to repository %s.",
                             commit.getChangeSetId(), commit.getRepositoryName()));
                     return null;
+                }
+                final String branchForProject = getBranchForProject(commit.getRepositoryName());
+                if(branchForProject != "" && branchForProject.equals(cs.getBranch()) == false)
+                {
+                    logger.info(String.format("Commit skiped because of branch is %s but branch filter is %s",
+                    		cs.getBranch(), branchForProject));
+                	return null;
                 }
 
                 committerToCrucibleUser.set(loadCommitterMappings(project.getDefaultRepositoryName()));
@@ -177,7 +185,7 @@ public class CommitListener implements EventListener {
             return false;
         }
 
-        String jiraKey = createJiraKey(cs);
+        String jiraKey = createJiraKey(project);
         List<ReviewData> reviewDatas;
         try {
             reviewDatas = searchService.searchForReviewsByJiraKey(jiraKey);
@@ -185,10 +193,22 @@ public class CommitListener implements EventListener {
             logger.warn("Couldn't perform search for existing reviews by JIRA Key: " + jiraKey, e);
             return false;
         }
+        
+        for(int i = reviewDatas.size() - 1; i >= 0; i--)
+        {
+
+            String author = committerToCrucibleUser.get().get(cs.getAuthor().toLowerCase()).getUserName();
+            if(reviewDatas.get(i).getAuthor().getUserName() != author
+                || reviewDatas.get(i).getModerator().getUserName() != project.getDefaultModerator()
+                || reviewDatas.get(i).getCreator().getUserName() != author)
+            {
+                reviewDatas.remove(i);
+            }
+        }
 
         Predicate<ReviewData> predicate = new Predicate<ReviewData>() {
             public boolean apply(ReviewData input) {
-                return input.getState() == ReviewData.State.Draft
+            	return input.getState() == ReviewData.State.Draft
                         || input.getState() == ReviewData.State.Approval
                         || input.getState() == ReviewData.State.Review;
             }
@@ -275,7 +295,7 @@ public class CommitListener implements EventListener {
 
 
     private UserData getCommitterUser(ChangesetDataFE cs, String moderatorUsername) {
-        String author = cs.getAuthor();
+        String author = cs.getAuthor().toLowerCase();
         UserData userData = committerToCrucibleUser.get().get(author);
         if (userData != null){
             return userData;
@@ -291,8 +311,8 @@ public class CommitListener implements EventListener {
         }
     }
 
-    private String createJiraKey(ChangesetDataFE cs) {
-        String jiraKey = cs.getBranches().iterator().next();
+    private String createJiraKey( ProjectData project) {
+        String jiraKey = project.getKey();
         jiraKey = jiraKey.replaceAll("\\W", "");
         jiraKey = jiraKey + "-1";
         return jiraKey;
@@ -349,23 +369,28 @@ public class CommitListener implements EventListener {
         final UserData creator = getCommitterUser(cs, project.getDefaultModerator());
         final Date dueDate = project.getDefaultDuration() == null ? null :
                 DateHelper.addWorkingDays(new Date(), project.getDefaultDuration());
-
-        ReviewData.Builder builder = new ReviewData.Builder();
-        builder.setProjectKey(project.getKey())
-                .setName(cs.getBranches().iterator().next())
-                .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), ""))
-                .setAuthor(creator)
-                .setModerator(creator)
-                .setCreator(creator)
-                .setState(ReviewData.State.Draft)
-                .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
-                .setJiraIssueKey(createJiraKey(cs))
-                .setDueDate(dueDate);
-
         try {
-            return builder.build();
-        } catch (Exception e){
-            logger.warn("Couldn't build template for new review", e.getStackTrace());
+            ReviewData.Builder builder = new ReviewData.Builder();
+            builder.setProjectKey(project.getKey())
+                    .setName(cs.getBranches().iterator().next())
+                    .setDescription(StringUtils.defaultIfEmpty(project.getDefaultObjectives(), ""))
+                    .setAuthor(creator)
+                    .setModerator(userService.getUser(project.getDefaultModerator()))
+                    .setCreator(creator)
+                    .setState(ReviewData.State.Draft)
+                    .setAllowReviewersToJoin(project.isAllowReviewersToJoin())
+                    .setJiraIssueKey(createJiraKey(project))
+                    .setDueDate(dueDate);
+
+            try {
+                return builder.build();
+            } catch (Exception e){
+                logger.warn("Couldn't build template for new review", e.getStackTrace());
+                return null;
+            }
+        }
+        catch (ServerException e){
+            logger.error("Couldn't retrieve moderator from UserService");
             return null;
         }
     }
@@ -430,6 +455,28 @@ public class CommitListener implements EventListener {
         }
         return committerToUser;
     }
+    
+    /**
+     * Returns a brunch for repository
+     * This method must be invoked with admin permissions.
+     * </p>
+     *
+     * @param   repoKey
+     * @return  branchNAme
+     */
+    private String getBranchForProject(String repoKey) {
+
+        final List<ProjectData> projects = projectService.getAllProjects();
+        final Map<String, String> branches = config.loadBranchFilters();
+        for (ProjectData project : projects) {
+            if (repoKey.equals(project.getDefaultRepositoryName()) &&
+            		branches.containsKey(project.getKey())) {
+                return branches.get(project.getKey());
+            }
+        }
+        return "";
+    }
+    
     
     private boolean isPluginEnabled() {
         return !StringUtils.isEmpty(config.loadRunAsUser());

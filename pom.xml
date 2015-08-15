@@ -25,7 +25,7 @@
         <fecru.version>3.2.0-20131126215459</fecru.version>
         <fecru.data.version>${fecru.version}</fecru.data.version>
         <sal.version>2.6.0</sal.version>
-        <amps.version>5.0.4</amps.version>
+        <amps.version>5.0.13</amps.version>
     </properties>
 
     <dependencies>
@@ -58,8 +58,10 @@
             <version>1.0-rc2</version>
         </dependency>
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.12</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
@@ -91,8 +93,8 @@
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>1.5</source>
-                    <target>1.5</target>
+                    <source>1.6</source>
+                    <target>1.6</target>
                 </configuration>
             </plugin>
         </plugins>

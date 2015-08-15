@@ -63,6 +63,10 @@
                         <a href="${contextPath}/admin/editProject.do?id=$project.id">[Update]</a>
                     #end
                     </span>
+                </label>
+                <br/>
+                <label>Branch Filter:
+                    <input type="text" size="15" name="$project.Key branchName" value="$project.branchName"/>
                 </label><br/><br/>
             </dd>
         #end
